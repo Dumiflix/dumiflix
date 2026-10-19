@@ -1,0 +1,41 @@
+# Local credentials, environment configuration, and pairing state
+.webos.json
+.seedr.json
+.remote.json
+automation.json
+client_secret*.json
+.dumiflix/
+dumiflix-cache/
+.env
+.env.*
+*.env
+*.env.*
+env
+env.*
+!env.example
+
+# Logs and caches
+*.log
+logs/
+cache/
+caches/
+.cache/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.deno/
+
+# Dependencies, virtual environments, and build output
+node_modules/
+.venv/
+venv/
+*.ipk
+out/
+build/
+dist/
+coverage/
+
+# OS metadata
+.DS_Store

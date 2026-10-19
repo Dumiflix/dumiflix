@@ -1,0 +1,7 @@
+{
+  "name": "com.dumiflix.tv.service",
+  "version": "0.1.0",
+  "description": "DumiFlix backend service for Google Drive uploads and local playback proxy",
+  "main": "service.js",
+  "private": true
+}

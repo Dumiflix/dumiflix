@@ -1,0 +1,1619 @@
+/* DumiFlix — webOS 10-foot UI. Designed for 1920×1080, viewed from ~10ft. */
+
+:root {
+  --bg: #0a0a0c;
+  --surface: #15151a;
+  --surface-2: #1f1f25;
+  --text: #ffffff;
+  --text-dim: #a8a8b3;
+  --text-muted: #6b6b75;
+  --accent: #e50914;
+  --accent-hi: #ff1a25;
+  --focus: #ffffff;
+  --radius-card: 14px;
+  --radius-tile: 8px;
+  --tile-w: 220px;
+  --tile-h: 330px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: -apple-system, "SF Pro Display", "Segoe UI", "LG Display_Light", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  width: 1920px; height: 1080px;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  user-select: none;
+}
+
+button { font: inherit; color: inherit; }
+
+/* ---------- Background ---------- */
+.bg {
+  position: fixed; inset: 0;
+  background-size: cover; background-position: center top;
+  filter: blur(0) brightness(0.45);
+  transition-property: background-image, opacity;
+  transition-duration: 600ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  z-index: 0;
+}
+.bg-fade {
+  position: fixed; inset: 0;
+  background:
+    linear-gradient(to top, var(--bg) 0%, rgba(10,10,12,0.4) 40%, rgba(10,10,12,0.1) 70%, rgba(10,10,12,0.7) 100%),
+    linear-gradient(to right, rgba(10,10,12,0.85) 0%, rgba(10,10,12,0.2) 50%);
+  z-index: 1;
+}
+
+/* ---------- Top bar ---------- */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; height: 90px;
+  display: flex; align-items: center;
+  padding: 0 60px;
+  z-index: 10;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+}
+.brand {
+  font-size: 32px; font-weight: 800;
+  color: var(--accent);
+  letter-spacing: -0.5px;
+  margin-right: 60px;
+  display: flex; align-items: center;
+}
+/* The D emblem leads the wordmark: [D]umiFlix. */
+.brand-d {
+  height: 34px; width: auto;
+  margin-right: 1px;
+  filter: drop-shadow(0 1px 6px rgba(229, 9, 20, 0.45));
+}
+.brand-word { line-height: 1; }
+
+/* ---------- Idle screensaver (ambient fireplace / rain loops) ---------- */
+.dumi-saver {
+  position: fixed; inset: 0; z-index: 500;   /* above player (100) */
+  background: #000;
+  opacity: 0; transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+.dumi-saver.is-on { opacity: 1; }
+.dumi-saver[hidden] { display: none; }
+.dumi-saver-video {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; background: #000;
+}
+.dumi-saver-hint {
+  position: absolute; left: 0; right: 0; bottom: 56px;
+  text-align: center;
+  color: rgba(255,255,255,0.55);
+  font-size: 20px; letter-spacing: 0.4px;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.85);
+  opacity: 0;
+  animation: saverHint 1s ease 2s forwards;
+}
+@keyframes saverHint { to { opacity: 1; } }
+.nav { display: flex; gap: 8px; flex: 1; }
+.nav-item {
+  background: transparent; border: 0;
+  padding: 12px 24px;
+  font-size: 22px; font-weight: 500;
+  color: var(--text-dim);
+  border-radius: 999px;
+  outline: 0;
+  transition-property: color, background, transform, box-shadow;
+  transition-duration: 180ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.nav-item.is-focused {
+  color: var(--text);
+  background: rgba(255,255,255,0.12);
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.5), 0 8px 24px rgba(0,0,0,0.5);
+  transform: scale(1.05);
+}
+.nav-item.is-active { color: var(--text); }
+.status {
+  font-size: 18px; color: var(--text-dim);
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+}
+.status:empty { display: none; }
+
+/* ---------- Tabs ---------- */
+.tab {
+  display: none;
+  position: relative;
+  padding: 110px 0 40px;
+  height: 1080px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 2;
+  scrollbar-width: none;
+}
+.tab::-webkit-scrollbar { display: none; }
+.tab.is-active { display: block; }
+.tab-title {
+  font-size: 36px; font-weight: 700;
+  margin: 0 60px 24px;
+  text-wrap: balance;
+}
+
+/* ---------- Hero ---------- */
+.hero {
+  padding: 60px 60px 24px;
+  min-height: 480px;
+  display: flex; align-items: flex-end;
+}
+.hero-meta { max-width: 720px; }
+.hero-title {
+  font-size: 72px; font-weight: 800; line-height: 1.05;
+  margin: 0 0 20px;
+  text-wrap: balance;
+  text-shadow: 0 4px 16px rgba(0,0,0,0.7);
+}
+.hero-summary {
+  font-size: 22px; line-height: 1.4;
+  color: rgba(255,255,255,0.9);
+  margin: 0 0 24px;
+  text-wrap: pretty;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.hero-actions { display: flex; gap: 16px; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  background: rgba(120,120,130,0.5);
+  color: var(--text);
+  border: 0;
+  padding: 14px 28px;
+  font-size: 22px; font-weight: 600;
+  border-radius: 8px;
+  outline: 0;
+  transition-property: background, color, box-shadow, transform;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.btn:active { transform: scale(0.96); }
+.btn-primary {
+  background: var(--text);
+  color: #000;
+}
+.btn.is-focused {
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.9), 0 12px 32px rgba(0,0,0,0.6);
+  transform: scale(1.04);
+}
+.btn-primary.is-focused { background: var(--accent); color: #fff; }
+
+/* ---------- Rows ---------- */
+.rows { padding: 0 0 60px; }
+.row { margin-bottom: 36px; }
+.row-title {
+  font-size: 26px; font-weight: 700;
+  margin: 0 60px 14px;
+  text-wrap: balance;
+}
+.row-strip {
+  display: flex; gap: 14px;
+  padding: 0 60px 24px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+.row-strip::-webkit-scrollbar { display: none; }
+
+.tile {
+  flex: 0 0 var(--tile-w);
+  width: var(--tile-w);
+  height: var(--tile-h);
+  border-radius: var(--radius-tile);
+  overflow: hidden;
+  position: relative;
+  background: var(--surface);
+  outline: 0;
+  transition-property: transform, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);
+}
+.tile.is-focused {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 3px var(--focus), 0 16px 40px rgba(0,0,0,0.7);
+  z-index: 5;
+}
+.tile-poster {
+  width: 100%; height: 100%;
+  background-size: cover; background-position: center;
+}
+.tile-fallback {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+  text-align: center;
+  font-size: 18px; font-weight: 600;
+  color: var(--text-dim);
+  text-wrap: balance;
+}
+.tile-meta {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 12px;
+  background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, transparent 100%);
+  font-size: 16px; font-weight: 500;
+}
+
+/* ---------- Search ---------- */
+.search-box {
+  display: flex; gap: 14px;
+  padding: 0 60px 24px;
+}
+.search-input {
+  flex: 1;
+  height: 64px;
+  padding: 0 24px;
+  font-size: 24px;
+  background: var(--surface);
+  border: 0;
+  border-radius: 12px;
+  color: var(--text);
+  outline: 0;
+  transition-property: box-shadow, background;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+.search-input.is-focused {
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+.search-results {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 14px;
+  padding: 0 60px;
+  max-height: 820px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.search-results::-webkit-scrollbar { display: none; }
+.search-empty {
+  grid-column: 1 / -1;
+  padding: 8px 0 24px;
+}
+.search-empty-title {
+  font-size: 28px; font-weight: 700;
+  margin: 0 0 12px;
+  text-wrap: balance;
+}
+.search-empty-body {
+  font-size: 20px; line-height: 1.4;
+  color: var(--text-dim);
+  max-width: 760px;
+  text-wrap: pretty;
+  margin: 0;
+}
+.search-empty-label {
+  font-size: 16px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+.search-empty .chips { padding: 0; }
+
+/* ---- Search typeahead suggestions ---- */
+.search-suggest {
+  margin: -12px 60px 18px;
+  background: var(--surface);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.06);
+}
+.search-suggest[hidden] { display: none; }
+.suggest-row {
+  display: flex; align-items: center; gap: 16px;
+  width: 100%; padding: 10px 18px;
+  border: 0; text-align: left; cursor: pointer;
+  background: transparent; color: var(--text);
+  transition: background 120ms, box-shadow 120ms;
+}
+.suggest-row + .suggest-row { box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); }
+.suggest-row.is-focused, .suggest-row:hover { background: var(--surface-2); }
+.suggest-row.is-focused { box-shadow: inset 0 0 0 2px var(--focus); }
+.suggest-poster {
+  width: 46px; height: 66px; flex: 0 0 auto;
+  border-radius: 6px; background: #0d0d10 center/cover no-repeat;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+}
+.suggest-meta { flex: 1; min-width: 0; }
+.suggest-title {
+  font-size: 22px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.suggest-sub {
+  font-size: 15px; color: var(--text-dim); margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.suggest-badge {
+  flex: 0 0 auto; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 4px 11px; border-radius: 999px;
+  background: rgba(255,255,255,0.08); color: var(--text-dim);
+}
+
+/* ---------- Library / Queue rows ---------- */
+.lib-list, .queue-list {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 0 60px;
+  max-height: 880px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.lib-list::-webkit-scrollbar, .queue-list::-webkit-scrollbar { display: none; }
+.lib-row, .q-row {
+  display: flex; align-items: center; gap: 20px;
+  padding: 16px 20px;
+  background: rgba(255,255,255,0.04);
+  border-radius: var(--radius-card);
+  outline: 0;
+  transition-property: background, box-shadow, transform;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.lib-row.is-focused, .q-row.is-focused {
+  background: rgba(255,255,255,0.12);
+  box-shadow: 0 0 0 3px var(--focus), 0 12px 32px rgba(0,0,0,0.6);
+  transform: scale(1.01);
+}
+.lib-name, .q-name { flex: 1; font-size: 22px; font-weight: 600; text-wrap: balance; }
+.lib-size, .q-meta { font-size: 17px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
+/* "Watch later" → over-5 GB variant goes straight to the pen drive. */
+.wl-badge {
+  display: inline-block; margin-left: 8px; padding: 1px 9px; border-radius: 7px;
+  background: rgba(255,180,84,0.16); color: #ffb454;
+  font-size: 14px; font-weight: 700; vertical-align: middle;
+}
+/* Watch Later download rows in the Library. */
+.dl-row .lib-name { font-size: 21px; }
+.dl-row.is-ready .lib-name { color: #3ddc84; }
+.dl-bar {
+  height: 7px; max-width: 560px; margin-top: 9px;
+  background: rgba(255,255,255,0.12); border-radius: 7px; overflow: hidden;
+}
+.dl-fill {
+  height: 100%; border-radius: 7px;
+  background: linear-gradient(90deg, var(--accent, #e50914), #ff5a36);
+  transition: width 400ms ease;
+}
+.btn.dl-rm {
+  flex: 0 0 auto; padding: 8px 16px; font-size: 18px;
+  background: rgba(255,255,255,0.10);
+}
+
+/* Codec/format badge used in the Music tab — e.g. "ALAC 24/48 · stereo · 7.4 MB" */
+.lib-codec {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  background: rgba(255,255,255,0.07);
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.lib-codec.is-atmos {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(94,121,255,0.55), rgba(170,90,255,0.55));
+}
+.lib-codec.is-lossless {
+  color: #d8ffe5;
+  background: rgba(40,180,90,0.22);
+}
+
+.q-poster {
+  flex: 0 0 64px;
+  width: 64px; height: 96px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.06) center/cover no-repeat;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08), 0 4px 14px rgba(0,0,0,0.35);
+}
+.q-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.q-sub { font-size: 14px; opacity: 0.65; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-bar {
+  height: 6px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.q-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition-property: width;
+  transition-duration: 400ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.q-remove, .q-retry {
+  flex: 0 0 44px;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  border: 0;
+  color: rgba(255,255,255,0.7);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition-property: background-color, color, transform;
+  transition-duration: 160ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.q-remove:hover { background: rgba(255,80,80,0.2); color: #ff7a7a; }
+.q-retry:hover  { background: rgba(120,180,255,0.2); color: #b8d4ff; }
+.q-remove.is-focused {
+  background: var(--accent); color: #fff;
+  box-shadow: 0 0 0 3px var(--focus);
+}
+.q-retry.is-focused {
+  background: rgba(120,180,255,0.95); color: #0b0b16;
+  box-shadow: 0 0 0 3px var(--focus);
+}
+.q-remove:active, .q-retry:active { transform: scale(0.94); }
+
+/* ---------- Settings ---------- */
+.settings {
+  padding: 0 60px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+.settings-card {
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  padding: 32px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+.settings-card h3 {
+  margin: 0 0 8px; font-size: 26px;
+}
+.muted { color: var(--text-dim); font-size: 18px; line-height: 1.4; text-wrap: pretty; }
+.settings-card label {
+  display: block; margin: 16px 0 0;
+  font-size: 18px; color: var(--text-dim);
+}
+.settings-card input {
+  display: block; width: 100%;
+  height: 56px; margin-top: 8px;
+  background: var(--surface-2);
+  border: 0; border-radius: 10px;
+  color: var(--text);
+  font-size: 22px;
+  padding: 0 16px;
+  outline: 0;
+  transition-property: box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+.settings-card input.is-focused {
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+.settings-card .btn { margin-top: 20px; }
+.bt-device-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 18px;
+}
+.bt-device-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 74px;
+  padding: 12px 14px 12px 18px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+}
+.bt-device-copy { min-width: 0; }
+.bt-device-name {
+  overflow: hidden;
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bt-device-state {
+  margin-top: 4px;
+  color: var(--text-dim);
+  font-size: 15px;
+  text-transform: capitalize;
+}
+.bt-device-state.is-connected { color: #6ee7a8; }
+.bt-device-row .btn {
+  flex: 0 0 auto;
+  margin-top: 0;
+  padding: 11px 18px;
+  font-size: 17px;
+}
+.bt-status { margin-top: 12px; font-size: 16px; }
+
+/* ---------- Player ---------- */
+.player {
+  display: none;
+  position: fixed; inset: 0;
+  background: #000;
+  z-index: 100;
+}
+.player.is-open { display: block; }
+/* While the opaque fullscreen player is up, the home/tab DOM behind it is fully
+   occluded — take it out of the compositor so its decoded poster/backdrop
+   bitmaps and GPU layers are released for the whole playback session instead of
+   competing with the video decoder for webOS's 250MB GPU budget. display:none
+   (not DOM removal) preserves scroll/focus state for dpad.js. Specificity
+   (0,2,1) beats `.tab.is-active` (0,2,0), and reverts cleanly once the class
+   is removed in closePlayer. */
+body.has-player .tab,
+body.has-player .topbar,
+body.has-player .bg,
+body.has-player .bg-fade { display: none; }
+#video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+#video::cue {
+  /* Big enough to read across the room. Translucent black backdrop instead
+     of the white outline default — easier on the eyes against bright HDR. */
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 28px;
+  line-height: 1.35;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.85);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.player-overlay {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition-property: opacity;
+  transition-duration: 220ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.player-overlay.is-shown { opacity: 1; pointer-events: auto; }
+.p-grad-top, .p-grad-bottom {
+  position: absolute; left: 0; right: 0;
+  pointer-events: none;
+}
+.p-grad-top {
+  top: 0; height: 220px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 60%, transparent 100%);
+}
+.p-grad-bottom {
+  bottom: 0; height: 320px;
+  background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 50%, transparent 100%);
+}
+.p-top {
+  position: absolute; left: 60px; right: 60px; top: 36px;
+  display: flex; align-items: center; gap: 18px;
+}
+.p-title-wrap { flex: 1; min-width: 0; }
+.p-show {
+  font-size: 16px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(255,255,255,0.7); margin-bottom: 4px;
+  text-wrap: balance;
+}
+.p-show:empty { display: none; }
+.p-title {
+  font-size: 32px; font-weight: 700;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.85);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-wrap: balance;
+}
+/* Media-format badges under the player title */
+.p-mediainfo { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.p-mediainfo[hidden] { display: none; }
+.p-badge {
+  font: 800 14px/1 -apple-system, Segoe UI, system-ui, sans-serif;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  padding: 6px 11px; border-radius: 7px;
+  background: rgba(255,255,255,0.13); color: rgba(255,255,255,0.92);
+  border: 1px solid rgba(255,255,255,0.14);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+.p-badge.is-hdr    { background: linear-gradient(90deg,#a9791b,#ffd257); color:#2a2000; border-color: transparent; }
+.p-badge.is-atmos  { background: linear-gradient(90deg,#1a2a6c,#4a6cf7); color:#fff; border-color: transparent; }
+.p-badge.is-surround { background: rgba(80,160,255,0.22); color:#cfe4ff; border-color: rgba(80,160,255,0.32); }
+.p-top-actions { display: flex; gap: 10px; }
+.p-icon-btn {
+  position: relative;
+  width: 56px; height: 56px;
+  border-radius: 16px;
+  background: rgba(20,20,28,0.82);   /* was 0.55 + backdrop blur — solid instead, GPU-cheap */
+  border: 0;
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition-property: transform, background-color, box-shadow;
+  transition-duration: 180ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 4px 16px rgba(0,0,0,0.35);
+}
+.p-icon-btn:hover { background: rgba(40,40,52,0.75); }
+.p-icon-btn.is-focused {
+  background: rgba(255,255,255,0.95); color: #0b0b16;
+  box-shadow: 0 0 0 3px var(--focus), 0 8px 24px rgba(0,0,0,0.45);
+}
+.p-icon-btn:active { transform: scale(0.96); }
+.p-icon-btn[data-state="off"] { opacity: 0.5; }
+/* CC 'pending' — a candidate subtitle is being verified server-side (R7:
+   subtle state reflection) but must NOT read as fully "on" (R1: nothing
+   auto-shows until it's verified) — reduced opacity plus a slow pulse,
+   same icon, no new markup. */
+#p-cc[data-state="pending"] { opacity: 0.65; animation: p-cc-pending-pulse 1.8s ease-in-out infinite; }
+@keyframes p-cc-pending-pulse {
+  0%, 100% { opacity: 0.65; }
+  50%      { opacity: 0.35; }
+}
+.p-speed-label { font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums; }
+
+.p-center-controls {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex; align-items: center; gap: 56px;
+}
+.p-circle-btn {
+  position: relative;
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: rgba(20,20,28,0.82);   /* was 0.55 + backdrop blur — solid instead, GPU-cheap */
+  border: 0;
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition-property: transform, background-color, box-shadow;
+  transition-duration: 180ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.07) inset, 0 8px 32px rgba(0,0,0,0.5);
+}
+.p-circle-btn:active { transform: scale(0.96); }
+.p-circle-btn.is-focused {
+  background: rgba(255,255,255,0.96); color: #0b0b16;
+  box-shadow: 0 0 0 3px var(--focus), 0 12px 40px rgba(0,0,0,0.55);
+}
+.p-circle-play {
+  width: 104px; height: 104px;
+  background: rgba(255,255,255,0.92); color: #0b0b16;
+}
+.p-circle-play.is-focused {
+  background: #fff; color: #0b0b16;
+  box-shadow: 0 0 0 4px var(--focus), 0 14px 44px rgba(0,0,0,0.6);
+}
+.p-circle-label {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, calc(-50% + 4px));
+  font-size: 13px; font-weight: 700; letter-spacing: 0.04em;
+  pointer-events: none;
+}
+
+.p-bottom {
+  position: absolute; left: 60px; right: 60px; bottom: 44px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.p-bar-wrap {
+  /* Bigger vertical padding makes the wrap a 30px-tall click target — the
+     visible 6px bar is too thin for the magic cursor to land on reliably.
+     The handler is bound to the wrap so any click in this band seeks. */
+  padding: 12px 0;
+  cursor: pointer;
+}
+.p-bar {
+  position: relative;
+  height: 6px;
+  background: rgba(255,255,255,0.22);
+  border-radius: 999px;
+  cursor: pointer;
+  outline: 0;
+  transition-property: height, box-shadow;
+  transition-duration: 160ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+/* Invisible hit-extender so the 6px-tall bar can be magic-cursor-clicked
+   without sub-pixel aim. Doesn't affect layout. */
+.p-bar::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: -16px; bottom: -16px;
+}
+.p-bar:hover, .p-bar.is-focused { height: 10px; }
+.p-bar.is-focused {
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.7), 0 4px 12px rgba(0,0,0,0.5);
+}
+.p-bar-buffer {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  background: rgba(255,255,255,0.32);
+  border-radius: 999px;
+  width: 0%;
+}
+.p-bar-fill {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  background: var(--accent);
+  border-radius: 999px;
+  width: 0%;
+}
+.p-bar-thumb {
+  position: absolute; top: 50%;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translate(-50%, -50%) scale(0);
+  transition-property: transform;
+  transition-duration: 160ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+.p-bar:hover .p-bar-thumb,
+.p-bar.is-focused .p-bar-thumb { transform: translate(-50%, -50%) scale(1); }
+.p-time-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.p-time, .p-time-remaining {
+  font-size: 16px; color: rgba(255,255,255,0.9);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+.p-time-remaining { opacity: 0.75; }
+
+/* Buffering spinner */
+.p-buffering {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  pointer-events: none;
+}
+.p-spinner {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  border: 4px solid rgba(255,255,255,0.18);
+  border-top-color: rgba(255,255,255,0.9);
+  animation: p-spin 0.9s linear infinite;
+}
+@keyframes p-spin { to { transform: rotate(360deg); } }
+
+/* Pre-stream loading overlay */
+.dumi-loading {
+  position: fixed; inset: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: center;
+  background: #000;
+  overflow: hidden;
+}
+.dumi-loading[hidden] { display: none; }
+.dumi-load-bg {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  filter: blur(26px) brightness(0.32) saturate(1.1);
+  transform: scale(1.15);
+  opacity: 0.8;
+}
+.dumi-load-bg::after {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 42%, rgba(0,0,0,0.35), rgba(0,0,0,0.85));
+}
+.dumi-load-inner {
+  position: relative; z-index: 1; text-align: center;
+  max-width: 80%; animation: dumi-load-in 0.35s ease-out;
+}
+@keyframes dumi-load-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.dumi-load-spin {
+  width: 68px; height: 68px; margin: 0 auto 30px;
+  border-radius: 50%;
+  border: 5px solid rgba(255,255,255,0.16);
+  border-top-color: #e50914;
+  animation: p-spin 0.9s linear infinite;
+}
+.dumi-load-title {
+  font-size: 32px; font-weight: 800; color: #fff;
+  margin-bottom: 10px; text-shadow: 0 2px 12px rgba(0,0,0,0.7);
+  max-width: 70vw; margin-left: auto; margin-right: auto;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dumi-load-status {
+  font-size: 21px; color: #cfcfcf; margin-bottom: 22px;
+  font-variant-numeric: tabular-nums;
+}
+.dumi-load-bar {
+  width: 380px; max-width: 78vw; height: 6px; margin: 0 auto;
+  border-radius: 999px; background: rgba(255,255,255,0.16); overflow: hidden;
+}
+.dumi-load-fill {
+  height: 100%; width: 0;
+  background: linear-gradient(90deg, #e50914, #ff5a36);
+  border-radius: 999px; transition: width 0.35s ease;
+}
+.dumi-load-hint { margin-top: 26px; font-size: 15px; color: #8a8a8a; }
+
+/* Floating toast inside the player (e.g. "+10s") */
+.p-toast {
+  position: absolute; left: 50%; top: 28%;
+  transform: translate(-50%, 0);
+  background: rgba(0,0,0,0.82);   /* was 0.7 + backdrop blur — solid instead, GPU-cheap */
+  color: #fff;
+  font-size: 22px; font-weight: 600;
+  padding: 14px 24px;
+  border-radius: 14px;
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0;
+  transition-property: opacity, transform;
+  transition-duration: 180ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.p-toast.is-shown { opacity: 1; transform: translate(-50%, -8px); }
+
+/* Directional seek indicator — just the skip amount, on the side you're
+   seeking toward. No backdrop-filter (GPU-cheap so it paints instantly on
+   webOS); a fast opacity fade is the only transition, for a snappy feel. */
+.p-seek {
+  position: absolute; top: 50%;
+  transform: translateY(-50%);
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 26px;
+  background: rgba(0,0,0,0.6);
+  border-radius: 999px;
+  z-index: 7; pointer-events: none;
+  opacity: 0;
+  transition: opacity 90ms linear;
+}
+.p-seek.is-shown { opacity: 1; }
+.p-seek.left  { left: 10%; }
+.p-seek.right { right: 10%; }
+.p-seek .p-seek-num  { font-size: 34px; font-weight: 800; color: #fff; }
+.p-seek .p-seek-chev { font-size: 40px; font-weight: 800; color: #fff; opacity: 0.85; line-height: 1; }
+
+/* Subtitle overlay rendered by JS on `cuechange`. Sits above the
+   video-hole and below the playback controls. We render with a strong
+   text-shadow + semi-opaque background so they're legible on any frame
+   even without per-line backdrop blur. */
+.p-subs {
+  position: absolute;
+  left: 0; right: 0; bottom: 14%;
+  text-align: center;
+  z-index: 4;
+  pointer-events: none;
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #fff;
+  text-shadow:
+    0  0  6px rgba(0,0,0,0.95),
+    0  2px 4px rgba(0,0,0,0.9),
+    0 -1px 2px rgba(0,0,0,0.9);
+  padding: 0 6%;
+  white-space: pre-line;
+  display: none;
+}
+.p-subs.is-shown { display: block; }
+.p-subs span {
+  background: rgba(0,0,0,0.45);
+  padding: 4px 14px;
+  border-radius: 6px;
+  display: inline-block;
+}
+/* When the controls overlay is up, lift subs so they don't collide. */
+.player-overlay.is-shown ~ .p-subs,
+.player .player-overlay.is-shown + .p-subs {
+  bottom: 22%;
+}
+/* Hide the native UA cue display — webOS paints them onto the <video>
+   transparent hole where they're invisible. Our DOM div replaces them. */
+#video::-webkit-media-text-track-display,
+#video::cue {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Track-picker menu (audio / subtitles / speed) */
+.p-menu {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.78);   /* was 0.55 + backdrop blur — solid dim instead, GPU-cheap */
+  display: flex; align-items: center; justify-content: center;
+  z-index: 8;
+  /* hidden is attribute-toggled → keyframes replay on every open */
+  animation: p-menu-dim-in 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+.p-menu[hidden] { display: none; }
+@keyframes p-menu-dim-in { from { opacity: 0; } to { opacity: 1; } }
+.p-menu-card {
+  background: rgba(18,18,26,0.96);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 24px;
+  padding: 28px 32px;
+  min-width: 360px; max-width: 480px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  animation: p-card-in 240ms cubic-bezier(0.2, 0, 0, 1);
+  transform-origin: center bottom;
+}
+.p-menu-title {
+  font-size: 20px; font-weight: 700;
+  margin-bottom: 16px;
+  letter-spacing: 0.02em;
+}
+.p-menu-list { display: flex; flex-direction: column; gap: 6px; }
+.p-menu-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: transparent;
+  color: #fff;
+  font-size: 17px;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  transition-property: background-color, transform;
+  transition-duration: 160ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.p-menu-item:hover { background: rgba(255,255,255,0.06); }
+.p-menu-item.is-focused {
+  background: rgba(255,255,255,0.95); color: #0b0b16;
+  box-shadow: 0 0 0 2px var(--focus);
+}
+.p-menu-item:active { transform: scale(0.98); }
+.p-menu-item .p-menu-check { width: 22px; height: 22px; opacity: 0; }
+.p-menu-item.is-active .p-menu-check { opacity: 1; }
+.p-menu-item .p-menu-sub {
+  margin-left: auto;
+  font-size: 13px; opacity: 0.6;
+}
+
+/* Up next prompt */
+.p-upnext {
+  position: absolute; right: 60px; bottom: 140px;
+  background: rgba(18,18,26,0.96);   /* was 0.92 + backdrop blur — solid instead, GPU-cheap */
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 22px 26px;
+  width: 380px;
+  z-index: 7;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+  /* Enter animation: `hidden` is attribute-toggled from JS, so a keyframe on
+     the visible state re-plays on every show — no JS changes needed. Exit
+     stays instant on purpose: dismissing must feel immediate. */
+  animation: p-card-in 260ms cubic-bezier(0.2, 0, 0, 1);
+  transform-origin: bottom right;
+}
+@keyframes p-card-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+/* Skip-to-next-episode button — bottom-right corner of the player,
+   shown by JS only when the current item is a TV episode and we're past
+   95% of duration. Visually distinct from the Up Next dialog (the dialog
+   is the auto-advance prompt at end-of-video; this button is the
+   manual "skip ahead" within the last 5%). */
+.p-next-ep-btn {
+  position: absolute; right: 60px; bottom: 200px;
+  display: inline-flex; align-items: center; gap: 10px;
+  font: 700 20px/1 -apple-system, Segoe UI, system-ui, sans-serif;
+  color: #fff; background: rgba(18,18,26,0.85);
+  border: 2px solid rgba(255,255,255,0.18);
+  border-radius: 999px;
+  padding: 14px 22px;
+  cursor: pointer;
+  z-index: 8;   /* backdrop blur removed — solid rgba bg above is GPU-cheap */
+  box-shadow: 0 14px 40px rgba(0,0,0,0.55);
+  transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+}
+.p-next-ep-btn[hidden] { display: none; }
+.p-next-ep-btn:hover,
+.p-next-ep-btn.is-focused {
+  background: rgba(80,160,255,0.92);
+  border-color: rgba(255,255,255,0.45);
+  transform: scale(1.04);
+}
+.p-next-ep-btn:active { transform: scale(0.98); }
+.p-next-ep-btn svg { display: block; }
+
+/* Skip Intro / Recap / Credits — sits just above the Next-ep slot so the two
+   never overlap on the rare occasion both are eligible. */
+.p-skip-btn {
+  position: absolute; right: 60px; bottom: 200px;
+  display: inline-flex; align-items: center; gap: 10px;
+  font: 700 20px/1 -apple-system, Segoe UI, system-ui, sans-serif;
+  color: #fff; background: rgba(18,18,26,0.85);
+  border: 2px solid rgba(255,255,255,0.18);
+  border-radius: 999px;
+  padding: 14px 22px;
+  cursor: pointer;
+  z-index: 8;   /* backdrop blur removed — solid rgba bg above is GPU-cheap */
+  box-shadow: 0 14px 40px rgba(0,0,0,0.55);
+  transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+}
+.p-skip-btn[hidden] { display: none; }
+/* When the Next-ep button is also visible, lift Skip above it. */
+.p-next-ep-btn:not([hidden]) ~ .p-skip-btn { bottom: 272px; }
+.p-skip-btn:hover,
+.p-skip-btn.is-focused {
+  background: rgba(80,160,255,0.92);
+  border-color: rgba(255,255,255,0.45);
+  transform: scale(1.04);
+}
+.p-skip-btn:active { transform: scale(0.98); }
+.p-skip-btn svg { display: block; }
+
+/* Subtitle-timing HUD — top-centre, leaves the lower-third subs visible. */
+.p-sync {
+  position: absolute; top: 108px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 18px 26px;
+  background: rgba(18,18,26,0.9);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 18px;
+  box-shadow: 0 18px 60px rgba(0,0,0,0.6);   /* backdrop blur removed — GPU-cheap */
+  z-index: 9;
+}
+.p-sync[hidden] { display: none; }
+.p-sync-label { font-size: 16px; font-weight: 700; letter-spacing: 0.03em; color: var(--text-dim); }
+.p-sync-controls { display: flex; align-items: center; gap: 18px; }
+.p-sync-btn {
+  font: 700 20px/1 -apple-system, Segoe UI, system-ui, sans-serif;
+  color: #fff; background: rgba(255,255,255,0.08);
+  border: 2px solid rgba(255,255,255,0.16);
+  border-radius: 12px; padding: 12px 18px; cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+}
+.p-sync-btn:hover, .p-sync-btn.is-focused {
+  background: rgba(80,160,255,0.92); border-color: rgba(255,255,255,0.45); transform: scale(1.05);
+}
+.p-sync-btn:active { transform: scale(0.97); }
+.p-sync-val {
+  min-width: 84px; text-align: center;
+  font: 800 30px/1 -apple-system, Segoe UI, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums; color: #fff;
+}
+.p-sync-hint { font-size: 13px; color: var(--text-dim); }
+
+.p-upnext[hidden] { display: none; }
+.p-upnext-label {
+  font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(255,255,255,0.55); margin-bottom: 6px;
+  /* Ticks between "Up next" and "Playing in N…" during the countdown
+     (app.js's maybeShowUpNext) — tabular-nums keeps the digit from
+     reflowing the label width every second. */
+  font-variant-numeric: tabular-nums;
+}
+/* Next-episode thumbnail — created lazily by app.js's upNextThumbEl() (no
+   dedicated node in the static markup) and inserted right above the title.
+   Hidden via the [hidden] attribute when the resolved next-episode object
+   carries no poster, so a miss just leaves the card text-only. */
+.p-upnext-thumb {
+  display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover;
+  border-radius: 12px; margin-bottom: 14px; background: #000;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.08);
+}
+.p-upnext-thumb[hidden] { display: none; }
+.p-upnext-title {
+  font-size: 18px; font-weight: 600; margin-bottom: 16px;
+  text-wrap: balance;
+}
+.p-upnext-actions { display: flex; gap: 10px; }
+.p-upnext-progress {
+  margin-top: 14px;
+  height: 3px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 999px;
+  overflow: hidden;
+}
+/* GPU-friendly countdown fill — a single CSS transform:scaleX transition
+   driven by the .is-filling class (app.js's maybeShowUpNext), not a per-tick
+   `width` write. transform/opacity are the only properties older webOS
+   Chromium composites without a layout pass; width triggers one on every
+   change. Always full-width at scaleX(1); the JS resets to scaleX(0)
+   (transition-less) and forces a reflow before re-adding .is-filling, so the
+   animation restarts cleanly every time the card is shown. */
+.p-upnext-progress-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--accent);
+  transform-origin: left center;
+  transform: scaleX(0);
+  will-change: transform;
+}
+.p-upnext-progress-fill.is-filling {
+  transition: transform 5000ms linear;
+  transform: scaleX(1);
+}
+
+/* ---------- Modal ---------- */
+.modal {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 50;
+  align-items: center; justify-content: center;
+}
+.modal.is-open { display: flex; }
+.modal-card {
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 40px;
+  max-width: 900px; max-height: 800px;
+  overflow-y: auto;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.06);
+}
+.modal-card h2 { margin: 0 0 16px; font-size: 36px; text-wrap: balance; }
+.modal-card p { font-size: 20px; line-height: 1.4; text-wrap: pretty; color: var(--text-dim); }
+.modal-actions { margin-top: 28px; display: flex; gap: 12px; }
+
+.results-list { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
+.result-row {
+  display: flex; align-items: center; gap: 16px;
+  padding: 16px; border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  outline: 0;
+  transition-property: background, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.result-row.is-focused {
+  background: rgba(255,255,255,0.12);
+  box-shadow: 0 0 0 3px var(--focus);
+}
+.result-name { flex: 1; font-size: 18px; }
+.result-meta { font-size: 16px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
+/* Episode picker rows: structured primary line + raw filename below. */
+.ep-row { align-items: flex-start; padding: 14px 18px; }
+.ep-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.ep-primary {
+  font-size: 18px; font-weight: 600;
+  letter-spacing: 0.2px;
+  font-variant-numeric: tabular-nums;
+}
+.ep-raw {
+  font-size: 14px;
+  color: var(--text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 760px;
+}
+.ep-meta {
+  flex: 0 0 auto;
+  font-size: 16px; color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  align-self: center;
+}
+
+/* Episode grid — compact tiles per episode number, season chips above. */
+.ep-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  padding: 4px 0 12px;
+}
+.ep-cell {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--text);
+  cursor: pointer;
+  transition-property: background, transform, box-shadow;
+  transition-duration: 120ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.ep-cell:active { transform: scale(0.96); }
+.ep-cell.is-focused {
+  background: rgba(229, 9, 20, 0.18);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.ep-num {
+  font-size: 22px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+}
+.ep-cell-name {
+  font-size: 13px;
+  color: var(--text);
+  text-align: center;
+  line-height: 1.25;
+  max-width: 100%;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ep-cell-meta { font-size: 12px; color: var(--text-dim); }
+.ep-cell.is-empty {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+.ep-cell.is-empty:active { transform: none; }
+
+/* Downloaded episode — subtle green wash + border so it reads as "already got
+   this" at a glance, distinct from the red focus ring. */
+.ep-cell.is-done {
+  background: rgba(61, 220, 132, 0.12);
+  border-color: rgba(61, 220, 132, 0.4);
+}
+.ep-cell.is-done.is-focused {
+  background: rgba(61, 220, 132, 0.22);
+  box-shadow: 0 0 0 2px #3ddc84;
+}
+/* Corner badges on the episode number line. */
+.ep-badge {
+  display: inline-block; margin-left: 6px;
+  font-size: 13px; font-weight: 800; vertical-align: middle;
+}
+.ep-badge-done { color: #3ddc84; }
+.ep-badge-big  { color: #ffb454; }
+
+/* Season-selector header status tags. */
+.tvshow-sub { margin: 8px 0 16px; color: #aaa; font-size: 15px; }
+.tvshow-tag {
+  display: inline-block; padding: 1px 9px; border-radius: 7px;
+  font-size: 13px; font-weight: 700;
+}
+.tvshow-tag-done { background: rgba(61,220,132,0.16); color: #3ddc84; }
+.tvshow-tag-pack { background: rgba(120,170,255,0.16); color: #7aaaff; }
+
+/* Season download CTA + its explainer note. */
+.season-bar {
+  display: flex; align-items: center; gap: 14px;
+  flex-wrap: wrap; margin: 0 0 16px;
+}
+.season-bar-note { font-size: 14px; }
+
+/* Little markers on the season chips (✓ downloaded, ⬇ pack available). */
+.chip-badge { font-weight: 800; font-size: 13px; vertical-align: middle; }
+.chip-badge-done { color: #3ddc84; }
+.chip-badge-pack { color: #7aaaff; }
+.chip.is-active .chip-badge { color: inherit; }
+
+/* Demoted "Other season packs" list below the grid. */
+.pack-head {
+  font-size: 16px; margin: 20px 0 8px;
+  color: var(--text-dim); font-weight: 600;
+}
+
+/* ---------- Library (grouped: show cards / movie tiles) ---------- */
+.lib-section { margin: 0 0 40px; }
+.lib-section > .row-title { margin: 0 60px 16px; }
+.lib-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 14px;
+  padding: 0 60px;
+}
+/* Library drill-down modal header */
+.lib-show-head {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.lib-show-poster {
+  flex: 0 0 90px;
+  width: 90px; height: 132px;
+  border-radius: 10px;
+  background-size: cover; background-position: center;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+/* Season heading shown when a Library show has only one downloaded season
+   (multi-season shows use the tappable chips instead). */
+.lib-season-head {
+  margin: 16px 0 12px;
+  font-size: 17px; font-weight: 600;
+  color: var(--text, #eaeaea);
+  letter-spacing: 0.2px;
+}
+/* Per-episode resume progress inside the ep-grid */
+.ep-cell.lib-ep { position: relative; overflow: hidden; }
+.lib-ep-bar {
+  width: 100%; height: 4px;
+  margin-top: 6px;
+  background: rgba(255,255,255,0.14);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.lib-ep-fill { height: 100%; background: var(--accent); }
+/* Quality badge (top-left) on Library show/movie cards */
+.tile-qbadge {
+  position: absolute; top: 8px; left: 8px;
+  background: rgba(0,0,0,0.72);
+  color: #fff;
+  font-size: 13px; font-weight: 700; letter-spacing: 0.02em;
+  padding: 3px 8px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.14);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed; bottom: 60px; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(20,20,25,0.95);
+  border-radius: 12px;
+  padding: 18px 32px;
+  font-size: 22px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.08);
+  opacity: 0;
+  z-index: 200;
+  transition-property: opacity, transform;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  pointer-events: none;
+}
+.toast.is-shown { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---------- Continue Watching ---------- */
+.row-empty {
+  margin: 0 60px 24px;
+  padding: 28px 32px;
+  border-radius: var(--radius-card);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-muted);
+  font-size: 18px;
+  text-wrap: pretty;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+.tile-progress {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 4px;
+  background: rgba(255,255,255,0.18);
+  z-index: 2;
+}
+.tile-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+  transition: width 400ms cubic-bezier(0.2, 0, 0, 1);
+}
+.tile-resume .tile-meta {
+  /* Lift the meta strip a hair so it doesn't overlap the progress bar. */
+  padding-bottom: 14px;
+}
+
+/* ---------- Movies tab ---------- */
+.movies-head {
+  display: flex; align-items: center; gap: 24px;
+  padding: 0 60px 16px;
+}
+.movies-search {
+  flex: 1; max-width: 720px; margin-left: auto;
+}
+.movies-search input {
+  width: 100%; height: 48px;
+  padding: 0 18px;
+  font-size: 18px;
+  background: var(--surface);
+  border: 0; border-radius: 10px;
+  color: var(--text);
+  outline: 0;
+  transition-property: box-shadow, background;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+.movies-search input.is-focused {
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+
+.chips {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  padding: 0 60px 12px;
+  align-items: center;
+}
+.chips-rating .chips-label {
+  font-size: 16px; color: var(--text-muted);
+  margin-right: 6px;
+}
+.chip {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-dim);
+  border: 0;
+  padding: 8px 16px;
+  font-size: 16px; font-weight: 500;
+  border-radius: 999px;
+  outline: 0;
+  transition-property: background, color, transform, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.chip.is-active {
+  background: var(--text);
+  color: #000;
+}
+.chip.is-focused {
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.9);
+  transform: scale(1.05);
+}
+.chip:active { transform: scale(0.96); }
+
+.movies-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 14px;
+  padding: 12px 60px 0;
+  max-height: 720px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.movies-grid::-webkit-scrollbar { display: none; }
+.movies-grid .tile {
+  flex: 0 0 auto; width: auto; height: 360px;
+}
+
+.tile-badge {
+  position: absolute; top: 8px; right: 8px;
+  background: rgba(255,204,0,0.9);
+  color: #000;
+  font-size: 14px; font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+/* ---------- International chips (flag emoji + name) ---------- */
+.chip-flag {
+  font-size: 18px;
+  margin-right: 4px;
+  /* Emoji flags need their native rendering on webOS — no font override. */
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui, sans-serif;
+}
+/* The country/category rails on the International tab can have many chips —
+   allow them to wrap onto a second line cleanly. */
+#intl-countries, #intl-cats { padding-bottom: 8px; }
+
+/* ---------- Live TV ---------- */
+.live-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 14px;
+  padding: 12px 60px 0;
+  max-height: 800px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.live-grid::-webkit-scrollbar { display: none; }
+.live-tile {
+  position: relative;
+  height: 200px;
+  border-radius: var(--radius-tile);
+  background: linear-gradient(160deg, #1a1a22, #0f0f14);
+  border: 0;
+  outline: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 20px 16px;
+  gap: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition-property: transform, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+.live-tile.is-focused {
+  transform: scale(1.06);
+  box-shadow: 0 0 0 3px var(--focus), 0 16px 40px rgba(0,0,0,0.6);
+  z-index: 5;
+}
+.live-tile-logo {
+  width: 100%;
+  height: 88px;
+  background-size: contain; background-position: center;
+  background-repeat: no-repeat;
+  flex: 0 0 auto;
+}
+.live-tile-name {
+  font-size: 18px; font-weight: 600;
+  color: var(--text);
+  text-wrap: balance;
+  line-height: 1.2;
+}
+.live-tile-chno {
+  position: absolute; top: 8px; left: 10px;
+  font-size: 13px; font-weight: 700;
+  color: rgba(255,255,255,0.5);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
+.live-tile-live {
+  position: absolute; top: 10px; right: 10px;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #fff;
+  background: var(--accent);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+/* "● LIVE" badge that replaces the time row in the player when source==live */
+.p-live-badge {
+  display: none;
+  align-items: center; gap: 8px;
+  font-size: 18px; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: #fff;
+}
+.p-live-badge::before {
+  content: '';
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px rgba(229,9,20,0.18);
+  animation: p-live-pulse 1.4s ease-in-out infinite;
+}
+@keyframes p-live-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+.player.is-live .p-bar-wrap,
+.player.is-live .p-time-row,
+.player.is-live #p-rew,
+.player.is-live #p-fwd,
+.player.is-live #p-speed { display: none; }
+.player.is-live .p-live-badge { display: inline-flex; }
+.player.is-live .p-bottom { gap: 0; }
+
+/* Audio playback (Music tab). No video, so dress the void: a soft gradient
+   background, hide the subtitle button (irrelevant), and keep the overlay
+   chrome permanently visible — there's nothing to see underneath. */
+.player.is-audio { background: radial-gradient(ellipse at 50% 30%, #2a1e4a 0%, #0a0712 70%); }
+.player.is-audio #video { visibility: hidden; }
+.player.is-audio #p-cc { display: none; }
+#p-shuffle { display: none; }
+.player.is-audio #p-shuffle { display: inline-flex; }
+#p-shuffle[data-state="on"] { color: #7adcff; }
+#p-shuffle[data-state="on"]::after {
+  content: ''; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+  width: 4px; height: 4px; border-radius: 50%; background: #7adcff;
+}
+
+.player .player-overlay { z-index: 5; }
+.player .p-menu { z-index: 10; }
+/* Keep audio playback controls visible because there is no video. */
+.player.is-audio .player-overlay { opacity: 1 !important; pointer-events: auto !important; }
+.player.is-audio .p-grad-top,
+.player.is-audio .p-grad-bottom { opacity: 0; }
+.player.is-audio .p-title { font-size: 36px; }
+
+/* ---------- Storage list ---------- */
+.storage-row {
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  margin-top: 8px;
+  font-size: 18px;
+}
+.storage-row .muted { font-size: 14px; }
+
+/* ---------- Shows tab (mirrors .movies-grid/.tile exactly — same grid,
+   same tile classes, same chip bars). #shows-grid carries the .movies-grid
+   class directly in index.html, so it inherits that grid's rules verbatim
+   with zero new CSS needed here. ---------- */
+
+/* Two compact action buttons per season row in the Shows modal (Play /
+   Watch Later), sitting alongside .result-name inside the existing
+   .result-row flex layout — no changes to .result-row itself. */
+.result-row-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+.btn-sm {
+  padding: 10px 18px;
+  font-size: 16px;
+}
+.btn[disabled] {
+  opacity: 0.35;
+  pointer-events: none;
+}

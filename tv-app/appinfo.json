@@ -1,0 +1,31 @@
+{
+  "id": "com.dumiflix.tv",
+  "version": "1.1.6",
+  "vendor": "DumiFlix contributors",
+  "type": "web",
+  "main": "index.html",
+  "title": "DumiFlix",
+  "icon": "icon.png",
+  "largeIcon": "icon-large.png",
+  "splashBackground": "splash.png",
+  "iconColor": "#0d0d0f",
+  "appDescription": "Self-contained streaming app \u2014 searches torrents, fetches via seedr cloud, streams HTTPS to TV.",
+  "resolution": "1920x1080",
+  "uiRevision": "2",
+  "supportTouchMode": "none",
+  "handlesRelaunch": false,
+  "transparent": false,
+  "disableBackHistoryAPI": true,
+  "requiredMemory": 250,
+  "accessibility": {
+    "supportsAudioGuidance": false
+  },
+  "allowVideoCapture": false,
+  "allowAudioCapture": false,
+  "vendorExtension": {
+    "userAgent": "$browserName$/$browserVersion$ ($platformName$-$platformVersion$), _TV_O18/$firmwareVersion$ (LG, $modelName$, $networkMode$)",
+    "allowCrossDomain": true
+  },
+  "useUnlimitedMediaPolicy": true,
+  "v8ExtraFlags": "--max-old-space-size=384 --external_allocation_hard_limit=128"
+}

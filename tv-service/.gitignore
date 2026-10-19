@@ -1,0 +1,7 @@
+# Local pairing/configuration and runtime artifacts.
+.webos.json
+automation.json
+.env
+__pycache__/
+*.py[cod]
+logs/

@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1920, initial-scale=1">
+  <!-- Send a Referer on cross-origin requests so YouTube's embed has
+       something to validate against (default `no-referrer-when-downgrade`
+       gives a file:// Referer, which YT rejects with error 153). -->
+  <meta name="referrer" content="origin">
+  <title>DumiFlix</title>
+  <link rel="stylesheet" href="app.css">
+  <!-- TV-native player (D-pad). -->
+  <link rel="stylesheet" href="tv-player.css">
+</head>
+<body>
+
+<!-- Background hero image (faded behind everything) -->
+<div id="bg" class="bg"></div>
+<div class="bg-fade"></div>
+
+<!-- Top bar -->
+<header id="topbar" class="topbar">
+  <div class="brand" aria-label="DumiFlix"><svg class="brand-d" viewBox="0 0 400 560" aria-hidden="true"><path fill="#e50914" fill-rule="evenodd" d="M48 10 H190 C320 10 372 130 372 280 C372 430 320 550 190 550 H48 Z M138 96 H186 C252 96 282 170 282 280 C282 390 252 464 186 464 H138 Z"/></svg><span class="brand-word">umiFlix</span></div>
+  <nav class="nav">
+    <button class="nav-item is-focused" data-tab="home">Home</button>
+    <button class="nav-item" data-tab="movies">Movies</button>
+    <button class="nav-item" data-tab="shows">Shows</button>
+    <button class="nav-item" data-tab="live">Live</button>
+    <button class="nav-item" data-tab="files">Files</button>
+    <button class="nav-item" data-tab="music">Music</button>
+    <button class="nav-item" data-tab="search">Search</button>
+    <button class="nav-item" data-tab="library">Library</button>
+    <button class="nav-item" data-tab="queue">Queue</button>
+    <button class="nav-item" data-tab="settings">Settings</button>
+  </nav>
+  <div class="status" id="status-pill"></div>
+</header>
+
+<!-- Tab: Home -->
+<main id="tab-home" class="tab is-active">
+  <section class="hero" id="hero">
+    <div class="hero-meta">
+      <h1 class="hero-title" id="hero-title">Loading…</h1>
+      <p class="hero-summary" id="hero-summary"></p>
+      <div class="hero-actions">
+        <button class="btn btn-primary" id="hero-play">▶ Play</button>
+        <button class="btn" id="hero-info">More info</button>
+      </div>
+    </div>
+  </section>
+  <section class="rows" id="rows"></section>
+</main>
+
+<!-- Tab: Movies (YTS browse with filters) -->
+<main id="tab-movies" class="tab">
+  <div class="movies-head">
+    <h2 class="tab-title" style="margin:0;">Movies</h2>
+    <div class="movies-search">
+      <button class="btn" id="movies-search-btn" type="button">Search…</button>
+      <input id="movies-q" type="search" placeholder="Search title or actor…" autocomplete="off" tabindex="-1" style="display:none;">
+    </div>
+  </div>
+  <div class="chips" id="movies-sort">
+    <button class="chip is-active" data-sort="trending">🔥 Trending</button>
+    <button class="chip" data-sort="liked">♥ Most liked</button>
+    <button class="chip" data-sort="rating">★ Top rated</button>
+    <button class="chip" data-sort="newest">✦ New</button>
+    <button class="chip" data-sort="year">◷ Year</button>
+  </div>
+  <div class="chips" id="movies-genre">
+    <button class="chip is-active" data-genre="">All genres</button>
+    <button class="chip" data-genre="action">Action</button>
+    <button class="chip" data-genre="comedy">Comedy</button>
+    <button class="chip" data-genre="drama">Drama</button>
+    <button class="chip" data-genre="thriller">Thriller</button>
+    <button class="chip" data-genre="sci-fi">Sci-Fi</button>
+    <button class="chip" data-genre="horror">Horror</button>
+    <button class="chip" data-genre="animation">Animation</button>
+    <button class="chip" data-genre="documentary">Docs</button>
+    <button class="chip" data-genre="romance">Romance</button>
+    <button class="chip" data-genre="crime">Crime</button>
+    <button class="chip" data-genre="fantasy">Fantasy</button>
+    <button class="chip" data-genre="adventure">Adventure</button>
+    <button class="chip" data-genre="family">Family</button>
+  </div>
+  <div class="chips chips-rating" id="movies-rating">
+    <span class="chips-label">IMDb</span>
+    <button class="chip is-active" data-rating="0">Any</button>
+    <button class="chip" data-rating="6">6+</button>
+    <button class="chip" data-rating="7">7+</button>
+    <button class="chip" data-rating="8">8+</button>
+    <button class="chip" data-rating="9">9+</button>
+  </div>
+  <div id="movies-grid" class="movies-grid"></div>
+  <div id="movies-status" class="muted" style="padding:0 60px;"></div>
+  <div style="text-align:center; padding:8px 0 22px;">
+    <button id="movies-more" class="btn" style="display:none;">Load more</button>
+  </div>
+</main>
+
+<!-- Tab: Shows (TV-show browser mirroring Movies' UX: filters + sort +
+     poster grid), backed by js/shows.js. Adds per-title quality badges
+     (sourced from EZTV/ApiBay/Knaben torrent names) and a Watch Later
+     action that downloads to the laptop cache via LaptopCache. -->
+<main id="tab-shows" class="tab">
+  <div class="movies-head">
+    <h2 class="tab-title" style="margin:0;">Shows</h2>
+    <div class="movies-search">
+      <button class="btn" id="shows-search-btn" type="button">Search…</button>
+      <input id="shows-q" type="search" placeholder="Search title…" autocomplete="off" tabindex="-1" style="display:none;">
+    </div>
+  </div>
+  <div class="chips" id="shows-sort">
+    <button class="chip is-active" data-sort="trending">🔥 Trending</button>
+    <button class="chip" data-sort="popular">★ Popular</button>
+    <button class="chip" data-sort="top_rated">♥ Top rated</button>
+    <button class="chip" data-sort="recent">✦ New</button>
+  </div>
+  <div class="chips" id="shows-genre">
+    <button class="chip is-active" data-genre="">All genres</button>
+    <button class="chip" data-genre="10759">Action &amp; Adventure</button>
+    <button class="chip" data-genre="35">Comedy</button>
+    <button class="chip" data-genre="18">Drama</button>
+    <button class="chip" data-genre="80">Crime</button>
+    <button class="chip" data-genre="10765">Sci-Fi &amp; Fantasy</button>
+    <button class="chip" data-genre="9648">Mystery</button>
+    <button class="chip" data-genre="16">Animation</button>
+    <button class="chip" data-genre="99">Documentary</button>
+    <button class="chip" data-genre="10751">Family</button>
+    <button class="chip" data-genre="10764">Reality</button>
+  </div>
+  <div class="chips" id="shows-decade">
+    <span class="chips-label">Decade</span>
+    <button class="chip is-active" data-decade="">Any</button>
+    <button class="chip" data-decade="2020s">2020s</button>
+    <button class="chip" data-decade="2010s">2010s</button>
+    <button class="chip" data-decade="2000s">2000s</button>
+    <button class="chip" data-decade="1990s">1990s</button>
+    <button class="chip" data-decade="classic">Classic</button>
+  </div>
+  <div id="shows-grid" class="movies-grid"></div>
+  <div id="shows-status" class="muted" style="padding:0 60px;"></div>
+  <div style="text-align:center; padding:8px 0 22px;">
+    <button id="shows-more" class="btn" style="display:none;">Load more</button>
+  </div>
+</main>
+
+<!-- Tab: Live — single tab, source toggle between user-configured FTA
+     playlists (js/livetv.js) and the world directory (js/iptv.js). Both
+     panels keep their original ids so renderLive()/renderInternational()
+     in app.js are unchanged; only one panel is visible at a time. -->
+<main id="tab-live" class="tab">
+  <div class="movies-head">
+    <h2 class="tab-title" style="margin:0;">Live</h2>
+    <button class="btn" id="live-refresh" type="button" style="margin-left:auto;">Refresh</button>
+  </div>
+  <div class="chips" id="live-source">
+    <button class="chip is-active" data-source="fta">FTA channels</button>
+    <button class="chip" data-source="intl">International</button>
+  </div>
+  <div id="live-panel-fta">
+    <div class="chips" id="live-groups"></div>
+    <div id="live-grid" class="live-grid"></div>
+    <div id="live-status" class="muted" style="padding:0 60px;"></div>
+  </div>
+  <div id="live-panel-intl" hidden>
+    <div class="chips" id="intl-countries"></div>
+    <div class="chips" id="intl-cats"></div>
+    <div id="intl-grid" class="live-grid"></div>
+    <div id="intl-status" class="muted" style="padding:0 60px;"></div>
+    <div style="text-align:center; padding:8px 0 22px;">
+      <button id="intl-more" class="btn" style="display:none;">Load more</button>
+    </div>
+  </div>
+</main>
+
+<!-- Tab: Files — browse configured file-server storage via the
+     file server's /files/list + /files/stream endpoints. -->
+<main id="tab-files" class="tab">
+  <h2 class="tab-title">Files</h2>
+  <div id="files-status" class="muted" style="padding: 0 60px 12px;"></div>
+  <div id="files-breadcrumb" class="muted" style="padding: 0 60px 8px;font-size:14px;"></div>
+  <div id="files-list" class="lib-list"></div>
+</main>
+
+<!-- Tab: Music (audio files from the configured music daemon) -->
+<main id="tab-music" class="tab">
+  <h2 class="tab-title">Music</h2>
+  <div class="chips" id="music-chips" style="padding: 0 60px 16px;">
+    <button class="chip" id="ytmusic-chip" data-source="ytmusic">YouTube Music</button>
+  </div>
+  <div id="music-status" class="muted" style="padding: 0 60px 12px;"></div>
+  <div id="music-list" class="lib-list"></div>
+</main>
+
+<!-- Tab: Search -->
+<main id="tab-search" class="tab">
+  <div class="search-box">
+    <input id="search-input" class="search-input" type="text" placeholder="Search movies" autocomplete="off">
+    <button class="btn" id="search-go">Search</button>
+  </div>
+  <div class="chips" id="search-type">
+    <button class="chip is-active" data-type="movies">Movies</button>
+    <button class="chip" data-type="tv">TV Shows</button>
+  </div>
+  <!-- Search typeahead: title suggestions as you type. Clicking one
+       runs the real torrent search for that title. -->
+  <div class="search-suggest" id="search-suggest" hidden></div>
+  <div class="search-results" id="search-results"></div>
+</main>
+
+<!-- Tab: Library (seedr files) -->
+<main id="tab-library" class="tab">
+  <h2 class="tab-title">Library</h2>
+  <div class="chips" id="library-view" aria-label="Library quality filter">
+    <button class="chip is-active" data-view="all">All</button>
+    <button class="chip" data-view="4k">4K</button>
+  </div>
+  <p class="muted" style="padding:0 60px 8px;margin:0;">Hold OK on a show to delete the entire show.</p>
+  <!-- Direct-to-pen "watch later" downloads (aria2). Rendered + polled
+       independently of #lib-list so a queue/seedr wipe never clears them. -->
+  <div class="lib-list" id="lib-downloads"></div>
+  <div class="lib-list" id="lib-list"></div>
+</main>
+
+<!-- Tab: Queue (active downloads) -->
+<main id="tab-queue" class="tab">
+  <div style="display:flex;align-items:center;justify-content:space-between;
+              padding:0 60px 16px;">
+    <h2 class="tab-title" style="padding:0;margin:0;">Queue</h2>
+    <button class="btn" id="queue-wipe-all"
+            title="Empty the queue AND wipe seedr — fresh start.">
+      Wipe queue + seedr
+    </button>
+  </div>
+  <div class="queue-list" id="queue-list"></div>
+</main>
+
+<!-- Tab: Settings -->
+<main id="tab-settings" class="tab">
+  <h2 class="tab-title">Settings</h2>
+  <div class="settings">
+    <div class="settings-card">
+      <h3>Seedr account</h3>
+      <p class="muted">Your Seedr credentials are stored locally on the TV and sent directly to Seedr for sign-in.</p>
+      <label>Email <input id="set-email" type="email" autocomplete="off"></label>
+      <label>Password <input id="set-password" type="password" autocomplete="off"></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="set-login">Sign in</button>
+        <button class="btn" id="set-seedr-wipe">Wipe seedr</button>
+      </div>
+      <div id="set-status" class="muted"></div>
+    </div>
+    <div class="settings-card">
+      <h3>TMDB (trending rows)</h3>
+      <p class="muted">Powers the "Trending Movies (7d)" + "Trending TV (7d)" rows on Home. Paste your TMDB v4 API Read Access Token (the long "eyJhb…" one). Free from themoviedb.org → Settings → API.</p>
+      <label>API key <input id="set-tmdb-key" type="password" autocomplete="off" placeholder="eyJhb…"></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="set-tmdb-save">Save</button>
+        <button class="btn" id="set-tmdb-clear">Clear</button>
+        <button class="btn" id="set-tmdb-test">Test</button>
+      </div>
+      <div id="set-tmdb-status" class="muted" style="margin-top:12px;"></div>
+    </div>
+    <div class="settings-card">
+      <h3>Google Drive</h3>
+      <p class="muted">Your library uses an opaque <code>._cache_&lt;hex&gt;</code> folder in Drive, generated per install and reused across launches. After reinstalling, use Reattach existing folder to select a previous library. Sign in with your Google Cloud OAuth client (type "TVs and Limited Input devices").</p>
+      <label>Client ID <input id="set-gd-client" type="text" autocomplete="off" placeholder="123-abc.apps.googleusercontent.com"></label>
+      <label>Client secret <input id="set-gd-secret" type="password" autocomplete="off" placeholder="From the same OAuth client"></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="set-gd-signin">Sign in</button>
+        <button class="btn" id="set-gd-signout">Sign out</button>
+        <button class="btn" id="storage-refresh">Refresh</button>
+        <button class="btn" id="set-gd-reattach" title="Use after a reinstall — finds existing ._cache_ folders or a legacy DumiFlix folder.">Reattach existing folder</button>
+      </div>
+      <div id="set-gd-status" class="muted" style="margin-top:12px;"></div>
+      <div id="storage-list"></div>
+    </div>
+    <div class="settings-card">
+      <h3>Phone file server</h3>
+      <p class="muted">Requires a separate companion file server, not included in this repository. It powers the Files tab and browses storage attached to your phone. Enter its host and port; default port <code>5052</code>.</p>
+      <label>Host <input id="set-phone-host" type="text" autocomplete="off" placeholder="192.0.2.10:5052"></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="set-phone-save">Save</button>
+        <button class="btn" id="set-phone-test">Test</button>
+      </div>
+      <div id="set-phone-status" class="muted" style="margin-top:12px;"></div>
+    </div>
+    <div class="settings-card">
+      <!-- set-mac-* IDs are historical names for the companion media relay. -->
+      <h3>Media relay (qBittorrent)</h3>
+      <p class="muted">Requires a separate companion relay service for qBittorrent, not included in this repository. Enter the service's host and port; default port <code>5052</code>.</p>
+      <label>Host <input id="set-mac-host" type="text" autocomplete="off" placeholder="192.0.2.20:5052"></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="set-mac-save">Save</button>
+        <button class="btn" id="set-mac-test">Test</button>
+        <button class="btn" id="set-mac-detect" title="Scan the LAN for the daemon">Auto-detect</button>
+      </div>
+      <p class="muted" style="margin-top:8px;font-size:14px;">Auto-detect scans the local network for the relay service. The TV also re-discovers it when the saved host stops answering, such as after a DHCP address change.</p>
+      <div id="set-mac-status" class="muted" style="margin-top:12px;"></div>
+    </div>
+    <div class="settings-card">
+      <h3>Laptop player (HDMI)</h3>
+      <p class="muted">Uses the optional Windows mpv adapter included in the laptop engine. Configure the engine and an external display or compatible HDMI audio receiver to play cached titles. Any failure falls back to normal TV playback automatically.</p>
+      <div class="chips" id="set-laptop-player" style="margin-bottom:8px;">
+        <button class="chip" data-v="on">On</button>
+        <button class="chip" data-v="off">Off (TV only)</button>
+      </div>
+      <label>HDMI input app (optional) <input id="set-laptop-hdmi-app" type="text" autocomplete="off" placeholder="com.webos.app.hdmi1"></label>
+      <div id="set-laptop-status" class="muted" style="margin-top:8px;"></div>
+    </div>
+    <div class="settings-card">
+      <h3>Bluetooth audio</h3>
+      <p class="muted">Requires a separate companion Bluetooth control service, not included in this repository. Connect headphones or speakers already paired in the TV's Bluetooth settings.</p>
+      <div id="set-bt-devices" class="bt-device-list">
+        <div class="muted">Checking paired devices…</div>
+      </div>
+      <button class="btn" id="set-bt-refresh">Refresh</button>
+      <div id="set-bt-status" class="muted bt-status"></div>
+    </div>
+    <div class="settings-card">
+      <h3>Remuxing</h3>
+      <p class="muted">Normal playback uses direct streams. Remuxing is unavailable in this build. Configure the engine connection below for laptop caching and playback features.</p>
+      <div class="chips" id="set-remux-enabled" style="margin-bottom:8px;">
+        <button class="chip" data-v="on" disabled>On (unavailable)</button>
+        <button class="chip" data-v="off">Off</button>
+      </div>
+      <p class="muted" style="margin:6px 0 4px;">Engine</p>
+      <div class="chips" id="set-remux-engine" style="margin-bottom:8px;">
+        <button class="chip" data-v="tv">TV (on-device)</button>
+        <button class="chip" data-v="laptop">Laptop</button>
+      </div>
+      <div id="set-remux-laptop" style="margin:8px 0;">
+        <p class="muted" style="margin:6px 0 4px;">Laptop host &amp; token</p>
+        <input id="set-remux-laptop-host" type="text" inputmode="url" autocomplete="off" spellcheck="false"
+               placeholder="e.g. 192.0.2.30:9891" style="width:100%;max-width:420px;margin-bottom:6px;" />
+        <input id="set-remux-laptop-token" type="text" autocomplete="off" spellcheck="false"
+               placeholder="playback token (server password)" style="width:100%;max-width:420px;" />
+        <p class="muted" style="font-size:13px;margin-top:4px;">Use the configured engine for laptop caching and optional playback. Normal TV playback uses direct streams.</p>
+      </div>
+      <div id="set-remux-status" class="muted" style="margin-top:12px;"></div>
+    </div>
+    <div class="settings-card">
+      <h3>Idle screensaver</h3>
+      <p class="muted">When the app sits idle on a browse screen, fade in a cozy ambient loop until you press any button on the remote. Plays videos from the configured file server's <code>Ambient</code> folder, falling back to public Mixkit clips when no local videos are available; never runs while you're watching something. The scene chips below only pick the Mixkit fallback set.</p>
+      <div class="chips" id="set-saver-enabled" style="margin-bottom:8px;">
+        <button class="chip" data-v="on">On</button>
+        <button class="chip" data-v="off">Off</button>
+      </div>
+      <div class="muted" style="font-size:14px;margin:10px 0 4px;">Scenes</div>
+      <div class="chips" id="set-saver-mode" style="margin-bottom:8px;">
+        <button class="chip" data-v="mix">Fireplace + Rain</button>
+        <button class="chip" data-v="fire">Fireplace</button>
+        <button class="chip" data-v="rain">Rain &amp; cozy</button>
+      </div>
+      <div class="muted" style="font-size:14px;margin:10px 0 4px;">Start after</div>
+      <div class="chips" id="set-saver-delay" style="margin-bottom:8px;">
+        <button class="chip" data-v="120000">2 min</button>
+        <button class="chip" data-v="180000">3 min</button>
+        <button class="chip" data-v="300000">5 min</button>
+        <button class="chip" data-v="600000">10 min</button>
+      </div>
+      <button class="btn" id="set-saver-preview">Preview now</button>
+      <div id="set-saver-status" class="muted" style="margin-top:12px;"></div>
+    </div>
+    <div class="settings-card">
+      <h3>Subtitles</h3>
+      <p class="muted">When a torrent doesn't include subtitles, fetch a matching one from OpenSubtitles. Register a free consumer at <code>opensubtitles.com/en/consumers</code> and paste the API key below.</p>
+      <label>API Key <input id="set-os-key" type="text" autocomplete="off" placeholder="opensubtitles.com api key"></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="set-os-save">Save</button>
+        <button class="btn" id="set-os-clear">Clear</button>
+      </div>
+      <div id="set-os-status" class="muted" style="margin-top:12px;"></div>
+    </div>
+    <div class="settings-card">
+      <h3>YouTube Music (spike)</h3>
+      <p class="muted">Paste cookies from a signed-in browser session on <code>music.youtube.com</code> (DevTools → Application → Cookies). They live only on this TV.</p>
+      <label>__Secure-3PSID    <input id="set-ytm-3psid"    type="password" autocomplete="off"></label>
+      <label>__Secure-3PAPISID <input id="set-ytm-3papisid" type="password" autocomplete="off"></label>
+      <label>SAPISID           <input id="set-ytm-sapisid"  type="password" autocomplete="off"></label>
+      <label>HSID              <input id="set-ytm-hsid"     type="password" autocomplete="off"></label>
+      <label>SSID              <input id="set-ytm-ssid"     type="password" autocomplete="off"></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="set-ytm-save">Save</button>
+        <button class="btn" id="set-ytm-test">Test connection</button>
+        <button class="btn" id="set-ytm-clear">Clear</button>
+      </div>
+      <div id="set-ytm-status" class="muted" style="margin-top:12px;white-space:pre-wrap;font-family:monospace;font-size:12px;max-height:360px;overflow:auto;padding:8px;background:rgba(0,0,0,.25);border-radius:6px;"></div>
+    </div>
+    <div class="settings-card">
+      <h3>About</h3>
+      <p class="muted">DumiFlix v0.1 — self-contained TV app. Torrents are fetched in the cloud (seedr) and streamed to the TV via HTTPS.</p>
+      <!-- Approved TMDB primary full logo, embedded for offline attribution. -->
+      <p><a href="https://www.themoviedb.org"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgMTg1LjA0IDEzMy40Ij48ZGVmcz48c3R5bGU+LmNscy0xe2ZpbGw6dXJsKCNsaW5lYXItZ3JhZGllbnQpO308L3N0eWxlPjxsaW5lYXJHcmFkaWVudCBpZD0ibGluZWFyLWdyYWRpZW50IiB5MT0iNjYuNyIgeDI9IjE4NS4wNCIgeTI9IjY2LjciIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiM5MGNlYTEiLz48c3RvcCBvZmZzZXQ9IjAuNTYiIHN0b3AtY29sb3I9IiMzY2JlYzkiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMwMGIzZTUiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48dGl0bGU+QXNzZXQgNDwvdGl0bGU+PGcgaWQ9IkxheWVyXzIiIGRhdGEtbmFtZT0iTGF5ZXIgMiI+PGcgaWQ9IkxheWVyXzEtMiIgZGF0YS1uYW1lPSJMYXllciAxIj48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik01MS4wNiw2Ni43aDBBMTcuNjcsMTcuNjcsMCwwLDEsNjguNzMsNDloLS4xQTE3LjY3LDE3LjY3LDAsMCwxLDg2LjMsNjYuN2gwQTE3LjY3LDE3LjY3LDAsMCwxLDY4LjYzLDg0LjM3aC4xQTE3LjY3LDE3LjY3LDAsMCwxLDUxLjA2LDY2LjdabTgyLjY3LTMxLjMzaDMyLjlBMTcuNjcsMTcuNjcsMCwwLDAsMTg0LjMsMTcuN2gwQTE3LjY3LDE3LjY3LDAsMCwwLDE2Ni42MywwaC0zMi45QTE3LjY3LDE3LjY3LDAsMCwwLDExNi4wNiwxNy43aDBBMTcuNjcsMTcuNjcsMCwwLDAsMTMzLjczLDM1LjM3Wm0tMTEzLDk4aDYzLjlBMTcuNjcsMTcuNjcsMCwwLDAsMTAyLjMsMTE1LjdoMEExNy42NywxNy42NywwLDAsMCw4NC42Myw5OEgyMC43M0ExNy42NywxNy42NywwLDAsMCwzLjA2LDExNS43aDBBMTcuNjcsMTcuNjcsMCwwLDAsMjAuNzMsMTMzLjM3Wm04My45Mi00OWg2LjI1TDEyNS41LDQ5aC04LjM1bC04LjksMjMuMmgtLjFMOTkuNCw0OUg5MC41Wm0zMi40NSwwaDcuOFY0OWgtNy44Wm0yMi4yLDBoMjQuOTVWNzcuMkgxNjcuMVY3MGgxNS4zNVY2Mi44SDE2Ny4xVjU2LjJoMTYuMjVWNDloLTI0Wk0xMC4xLDM1LjRoNy44VjYuOUgyOFYwSDBWNi45SDEwLjFaTTM5LDM1LjRoNy44VjIwLjFINjEuOVYzNS40aDcuOFYwSDYxLjlWMTMuMkg0Ni43NVYwSDM5Wm00MS4yNSwwaDI1VjI4LjJIODhWMjFoMTUuMzVWMTMuOEg4OFY3LjJoMTYuMjVWMGgtMjRabS03OSw0OUg5VjU3LjI1aC4xbDksMjcuMTVIMjRsOS4zLTI3LjE1aC4xVjg0LjRoNy44VjQ5SDI5LjQ1bC04LjIsMjMuMWgtLjFMMTMsNDlIMS4yWm0xMTIuMDksNDlIMTI2YTI0LjU5LDI0LjU5LDAsMCwwLDcuNTYtMS4xNSwxOS41MiwxOS41MiwwLDAsMCw2LjM1LTMuMzcsMTYuMzcsMTYuMzcsMCwwLDAsNC4zNy01LjVBMTYuOTEsMTYuOTEsMCwwLDAsMTQ2LDExNS44YTE4LjUsMTguNSwwLDAsMC0xLjY4LTguMjUsMTUuMSwxNS4xLDAsMCwwLTQuNTItNS41M0ExOC41NSwxOC41NSwwLDAsMCwxMzMuMDcsOTksMzMuNTQsMzMuNTQsMCwwLDAsMTI1LDk4SDExMy4yOVptNy44MS0yOC4yaDQuNmExNy40MywxNy40MywwLDAsMSw0LjY3LjYyLDExLjY4LDExLjY4LDAsMCwxLDMuODgsMS44OCw5LDksMCwwLDEsMi42MiwzLjE4LDkuODcsOS44NywwLDAsMSwxLDQuNTIsMTEuOTIsMTEuOTIsMCwwLDEtMSw1LjA4LDguNjksOC42OSwwLDAsMS0yLjY3LDMuMzQsMTAuODcsMTAuODcsMCwwLDEtNCwxLjgzLDIxLjU3LDIxLjU3LDAsMCwxLTUsLjU1SDEyMS4xWm0zNi4xNCwyOC4yaDE0LjVhMjMuMTEsMjMuMTEsMCwwLDAsNC43My0uNSwxMy4zOCwxMy4zOCwwLDAsMCw0LjI3LTEuNjUsOS40Miw5LjQyLDAsMCwwLDMuMS0zLDguNTIsOC41MiwwLDAsMCwxLjItNC42OCw5LjE2LDkuMTYsMCwwLDAtLjU1LTMuMiw3Ljc5LDcuNzksMCwwLDAtMS41Ny0yLjYyLDguMzgsOC4zOCwwLDAsMC0yLjQ1LTEuODUsMTAsMTAsMCwwLDAtMy4xOC0xdi0uMWE5LjI4LDkuMjgsMCwwLDAsNC40My0yLjgyLDcuNDIsNy40MiwwLDAsMCwxLjY3LTUsOC4zNCw4LjM0LDAsMCwwLTEuMTUtNC42NSw3Ljg4LDcuODgsMCwwLDAtMy0yLjczLDEyLjksMTIuOSwwLDAsMC00LjE3LTEuMywzNC40MiwzNC40MiwwLDAsMC00LjYzLS4zMmgtMTMuMlptNy44LTI4LjhoNS4zYTEwLjc5LDEwLjc5LDAsMCwxLDEuODUuMTcsNS43Nyw1Ljc3LDAsMCwxLDEuNy41OCwzLjMzLDMuMzMsMCwwLDEsMS4yMywxLjEzLDMuMjIsMy4yMiwwLDAsMSwuNDcsMS44MiwzLjYzLDMuNjMsMCwwLDEtLjQyLDEuOCwzLjM0LDMuMzQsMCwwLDEtMS4xMywxLjIsNC43OCw0Ljc4LDAsMCwxLTEuNTcuNjUsOC4xNiw4LjE2LDAsMCwxLTEuNzguMkgxNjVabTAsMTQuMTVoNS45YTE1LjEyLDE1LjEyLDAsMCwxLDIuMDUuMTUsNy44Myw3LjgzLDAsMCwxLDIsLjU1LDQsNCwwLDAsMSwxLjU4LDEuMTcsMy4xMywzLjEzLDAsMCwxLC42MiwyLDMuNzEsMy43MSwwLDAsMS0uNDcsMS45NSw0LDQsMCwwLDEtMS4yMywxLjMsNC43OCw0Ljc4LDAsMCwxLTEuNjcuNyw4LjkxLDguOTEsMCwwLDEtMS44My4yaC03WiIvPjwvZz48L2c+PC9zdmc+" width="80" alt="The Movie Database (TMDB)" style="height:auto;"></a></p>
+      <p class="muted" style="font-size:13px;">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+      <p class="muted" style="font-size:13px;">Show data from <a href="https://www.tvmaze.com">TVmaze</a>, licensed under <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA</a>.</p>
+    </div>
+  </div>
+</main>
+
+<!-- Photo slideshow overlay. Single fullscreen image, auto-advances through
+     every image in the folder that was open in the Files tab. Arrow keys
+     move manually; ENTER/SPACE toggles pause; BACK closes. -->
+<div id="slideshow" style="display:none;position:fixed;inset:0;background:#000;z-index:9998;align-items:center;justify-content:center;">
+  <img id="slideshow-img" alt="" style="max-width:100%;max-height:100%;object-fit:contain;">
+  <div id="slideshow-info" style="position:absolute;bottom:24px;left:0;right:0;text-align:center;color:#fff;font-size:14px;opacity:.85;text-shadow:0 1px 4px rgba(0,0,0,.9);pointer-events:none;"></div>
+</div>
+
+<!-- YouTube Music IFrame Player overlay. The IFrame API creates the actual
+     <iframe> for us inside #ytm-player-mount — this avoids the User-Agent
+     gatekeeping that rejects a bare /embed URL on webOS's "WebAppManager"
+     UA and gives us proper queue + onStateChange events for auto-advance. -->
+<div id="ytm-player" style="display:none;position:fixed;inset:0;background:#000;z-index:9999;flex-direction:column;">
+  <div style="padding:20px 40px 12px;background:linear-gradient(to bottom,rgba(0,0,0,.9),transparent);position:absolute;top:0;left:0;right:0;z-index:1;pointer-events:none;">
+    <div id="ytm-track-name" style="font-size:26px;font-weight:600;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.8);"></div>
+    <div id="ytm-track-artist" style="font-size:16px;opacity:.75;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.8);margin-top:4px;"></div>
+    <div style="font-size:13px;opacity:.5;color:#fff;margin-top:8px;">Press BACK to exit</div>
+  </div>
+  <div id="ytm-player-mount" style="flex:1;width:100%;height:100%;"></div>
+</div>
+
+<!-- Player overlay -->
+<div id="player" class="player">
+  <!-- preload="metadata" not "auto" — auto keeps the entire stream
+       buffered which sometimes exceeds the webOS memory cap on long
+       videos. metadata still resolves the duration/size quickly. -->
+  <video id="video" playsinline preload="metadata"></video>
+  <!-- DOM-based subtitle overlay. webOS plays HEVC in a hardware
+       composition layer underneath the WebView; UA-rendered <track> cues
+       paint into the <video> element which is just a transparent hole at
+       that point, so the subs are invisible. We hide the UA painter and
+       render cue text into this regular div on `cuechange`. -->
+  <div class="p-subs" id="p-subs"></div>
+  <div class="p-buffering" id="p-buffering" hidden><div class="p-spinner"></div></div>
+  <div class="p-toast" id="p-toast" hidden></div>
+  <!-- Snappy directional seek indicator. Shows only the accumulated skip amount
+       on the side you're seeking toward — no full controls overlay. -->
+  <div class="p-seek" id="p-seek" hidden></div>
+  <div class="player-overlay" id="player-overlay">
+    <div class="p-grad-top"></div>
+    <div class="p-grad-bottom"></div>
+    <div class="p-top">
+      <button class="p-icon-btn" id="p-back" aria-label="Back">
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="p-title-wrap">
+        <div class="p-show" id="p-show"></div>
+        <div class="p-title" id="p-title"></div>
+        <!-- Video/audio format badges (4K · HDR10 · TrueHD 7.1 Atmos), filled
+             from the phone's media-info probe once the player opens. -->
+        <div class="p-mediainfo" id="p-mediainfo" hidden></div>
+      </div>
+      <div class="p-top-actions">
+        <button class="p-icon-btn" id="p-cc" aria-label="Subtitles" data-state="on">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 12h3M14 12h3M7 15h2M12 15h5"/></svg>
+        </button>
+        <button class="p-icon-btn" id="p-shuffle" aria-label="Shuffle" data-state="off" aria-pressed="false">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+        </button>
+        <button class="p-icon-btn" id="p-audio" aria-label="Audio">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 010 7.07"/><path d="M19.07 4.93a10 10 0 010 14.14"/></svg>
+        </button>
+        <button class="p-icon-btn" id="p-speed" aria-label="Playback speed">
+          <span class="p-speed-label" id="p-speed-label">1×</span>
+        </button>
+      </div>
+    </div>
+    <div class="p-center-controls">
+      <button class="p-circle-btn" id="p-rew" aria-label="Back 10 seconds">
+        <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 109-9"/><path d="M3 4v5h5"/></svg>
+        <span class="p-circle-label">10</span>
+      </button>
+      <button class="p-circle-btn p-circle-play" id="p-play" aria-label="Play/Pause">
+        <svg id="p-play-icon" viewBox="0 0 24 24" width="48" height="48" fill="currentColor"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+      </button>
+      <button class="p-circle-btn" id="p-fwd" aria-label="Forward 10 seconds">
+        <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 11-9-9"/><path d="M21 4v5h-5"/></svg>
+        <span class="p-circle-label">10</span>
+      </button>
+    </div>
+    <div class="p-bottom">
+      <div class="p-bar-wrap" id="p-bar-wrap">
+        <div class="p-bar" id="p-bar" tabindex="0" role="slider" aria-label="Seek">
+          <div class="p-bar-buffer" id="p-bar-buffer"></div>
+          <div class="p-bar-fill" id="p-bar-fill"></div>
+          <div class="p-bar-thumb" id="p-bar-thumb"></div>
+        </div>
+      </div>
+      <div class="p-time-row">
+        <div class="p-time" id="p-time">0:00 / 0:00</div>
+        <div class="p-time-remaining" id="p-time-remaining"></div>
+      </div>
+      <div class="p-live-badge"><span>Live</span></div>
+    </div>
+  </div>
+
+  <!-- Track menus (audio / subtitles / speed) -->
+  <div class="p-menu" id="p-menu" hidden>
+    <div class="p-menu-card">
+      <div class="p-menu-title" id="p-menu-title"></div>
+      <div class="p-menu-list" id="p-menu-list"></div>
+    </div>
+  </div>
+
+  <!-- "Next episode" button — appears bottom-right of the player when
+       the current video is a TV episode AND playback position is past
+       95% of duration. Tap skips straight to the next episode (reusing
+       the same lookup the Up Next dialog uses, but no dialog wait). -->
+  <button class="p-next-ep-btn" id="p-next-ep" hidden>
+    Next ep
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M5 4l10 8-10 8V4z"/>
+      <line x1="19" y1="5" x2="19" y2="19"/>
+    </svg>
+  </button>
+
+  <!-- Skip Intro / Skip Recap / Skip Credits — appears bottom-right during a
+       chapter the phone identified as intro/recap/credits (precise seek to the
+       chapter boundary), or, when a file has no chapters, as a heuristic
+       Skip Intro early in a TV episode. Label + target set from JS. -->
+  <button class="p-skip-btn" id="p-skip" hidden>
+    <span id="p-skip-label">Skip Intro</span>
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M5 4l10 8-10 8V4z"/>
+      <line x1="19" y1="5" x2="19" y2="19"/>
+    </svg>
+  </button>
+
+  <!-- Up-next prompt for next-episode auto-play -->
+  <div class="p-upnext" id="p-upnext" hidden>
+    <div class="p-upnext-label">Up next</div>
+    <div class="p-upnext-title" id="p-upnext-title"></div>
+    <div class="p-upnext-actions">
+      <button class="btn btn-primary is-focused" id="p-upnext-play">▶ Play now</button>
+      <button class="btn" id="p-upnext-cancel">Cancel</button>
+    </div>
+    <div class="p-upnext-progress"><div class="p-upnext-progress-fill" id="p-upnext-progress-fill"></div></div>
+  </div>
+
+  <!-- Subtitle-timing HUD. A compact top-centre bar (video + subtitles stay
+       visible behind it, unlike the full-screen track menu) so the user SEES
+       the subs shift as they nudge. ◄ / ► or the on-screen buttons adjust;
+       Back closes. -->
+  <div class="p-sync" id="p-sync" hidden>
+    <div class="p-sync-label">Subtitle timing</div>
+    <div class="p-sync-controls">
+      <button class="p-sync-btn" id="p-sync-minus" aria-label="Subtitles earlier">−0.5s</button>
+      <div class="p-sync-val" id="p-sync-val">0.0s</div>
+      <button class="p-sync-btn" id="p-sync-plus" aria-label="Subtitles later">+0.5s</button>
+    </div>
+    <div class="p-sync-hint">◄ ► to adjust · Back to close</div>
+  </div>
+</div>
+
+<!-- Modal: detail / confirm-add -->
+<div id="modal" class="modal">
+  <div class="modal-card" id="modal-card"></div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<!-- Pre-stream loading overlay (shown while a pick downloads, before the player) -->
+<div id="dumi-loading" class="dumi-loading" hidden>
+  <div id="dumi-load-bg" class="dumi-load-bg"></div>
+  <div class="dumi-load-inner">
+    <div class="dumi-load-spin"></div>
+    <div id="dumi-load-title" class="dumi-load-title"></div>
+    <div id="dumi-load-status" class="dumi-load-status">Preparing…</div>
+    <div class="dumi-load-bar"><div id="dumi-load-fill" class="dumi-load-fill"></div></div>
+    <div class="dumi-load-hint">Press Back to cancel</div>
+  </div>
+</div>
+
+<script src="js/storage.js"></script>
+<script src="js/gdrive.js"></script>
+<script src="js/seedr.js"></script>
+<script src="js/yts.js"></script>
+<script src="js/apibay.js"></script>
+<script src="js/tvmaze.js"></script>
+<script src="js/introdb.js"></script>
+<script src="js/eztv.js"></script>
+<script src="js/knaben.js"></script>
+<script src="js/trending.js"></script>
+<script src="js/tmdb.js"></script>
+<script src="js/livetv.js"></script>
+<script src="js/iptv.js"></script>
+<script src="js/opensubs.js"></script>
+<script src="js/macontv.js"></script>
+<script src="js/phone.js"></script>
+<script src="js/remux.js"></script>
+<script src="js/bluetooth-audio.js"></script>
+<script src="js/native-player.js"></script>
+<script src="js/phonecache.js"></script>
+<script src="js/laptopcache.js"></script>
+<script src="js/phonedl.js"></script>
+<script src="js/ytmusic.js"></script>
+<script src="js/dpad.js"></script>
+<script src="js/shows.js"></script>
+<script src="app.js"></script>
+<script src="tv-player.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "id": "com.dumiflix.tv.service",
+  "description": "DumiFlix Drive uploader + bearer-auth play proxy",
+  "services": [
+    {
+      "name": "com.dumiflix.tv.service",
+      "description": "Streams files from seedr into Google Drive and proxies playback through localhost:5051"
+    }
+  ]
+}

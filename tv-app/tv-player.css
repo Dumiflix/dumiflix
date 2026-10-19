@@ -1,0 +1,468 @@
+/* tv-player.css — TV-native player for DumiFlix webOS.
+   Fixed 1920x1080, D-pad only (no hover/pointer). Namespaced `nft-`.
+
+   Motion rules (older webOS Chromium composites transform/opacity only):
+   - every transition names its exact properties — never `all`
+   - enter = staggered slide+fade per chrome chunk (top, scrub, times, controls)
+   - exit  = the same chunks, softer: no stagger, shorter, smaller offset
+   - one easing family everywhere: --nft-ease (decelerate) / --nft-snap  */
+
+/* Take over the legacy controls chrome + subtitle layer while active. Also
+   hide the legacy floating Skip/Next buttons — they render over this player
+   but can't receive D-pad input (we own the keyboard), so a press fell through
+   to play/pause. This player draws its own focusable pills instead. */
+.player.nft-on #player-overlay { display: none !important; }
+.player.nft-on #p-subs { display: none !important; }
+.player.nft-on #p-skip,
+.player.nft-on #p-next-ep { display: none !important; }
+
+#nft {
+  position: absolute; inset: 0; z-index: 6; color: #fff;
+  font-family: "SF Pro Display", "Segoe UI", "LG Display_Light", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  pointer-events: none;
+  --nft-accent: #e50914;
+  --nft-safe: 80px;                          /* overscan-safe margin */
+  --nft-ease: cubic-bezier(0.2, 0, 0, 1);    /* decelerate — enters, focus */
+  --nft-snap: cubic-bezier(0.4, 0, 0.6, 1);  /* symmetric — exits */
+}
+#nft.nft-show { pointer-events: auto; }      /* magic-remote clicks */
+#nft * { box-sizing: border-box; }
+
+/* ---- Scrims (own fade — they are the backdrop the chunks land on) ---- */
+.nft-scrim-top, .nft-scrim-bottom {
+  position: absolute; left: 0; right: 0; pointer-events: none;
+  opacity: 0; transition: opacity 160ms var(--nft-snap);
+}
+#nft.nft-show .nft-scrim-top,
+#nft.nft-show .nft-scrim-bottom { opacity: 1; transition: opacity 300ms var(--nft-ease); }
+.nft-scrim-top { top: 0; height: 320px; background: linear-gradient(to bottom, rgba(0,0,0,.78), rgba(0,0,0,.35) 55%, transparent); }
+.nft-scrim-bottom { bottom: 0; height: 480px; background: linear-gradient(to top, rgba(0,0,0,.92) 0%, rgba(0,0,0,.55) 42%, transparent 100%); }
+
+/* ---- Trick-play dim — dim the video behind the filmstrip while
+   it's up (paused or scrubbing with a sprite manifest). Toggled by the
+   .nft-trick-on class on .player (see showFilmstrip/hideFilmstrip in
+   tv-player.js), independent of the general controls fade above. */
+.nft-trick-dim {
+  position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none;
+  transition: opacity 160ms var(--nft-snap);
+}
+.player.nft-trick-on .nft-trick-dim { opacity: .32; transition: opacity 220ms var(--nft-ease); }
+
+/* ---- Enter/exit choreography ------------------------------------------
+   Chunks: title block slides DOWN-in from above; the three bottom rows
+   slide UP-in with a 45ms cascade. Exit drops the delays and shrinks the
+   travel so it reads as a soft release, not a rewind of the entrance. */
+.nft-top, .nft-scrub, .nft-times, .nft-controls {
+  opacity: 0;
+  transition: opacity 150ms var(--nft-snap), transform 150ms var(--nft-snap);
+}
+.nft-top { transform: translateY(-10px); }
+.nft-scrub, .nft-times, .nft-controls { transform: translateY(14px); }
+#nft.nft-show .nft-top,
+#nft.nft-show .nft-scrub,
+#nft.nft-show .nft-times,
+#nft.nft-show .nft-controls {
+  opacity: 1; transform: translateY(0);
+  transition: opacity 260ms var(--nft-ease), transform 260ms var(--nft-ease);
+}
+#nft.nft-show .nft-scrub    { transition-delay: 45ms; }
+#nft.nft-show .nft-times    { transition-delay: 90ms; }
+#nft.nft-show .nft-controls { transition-delay: 135ms; }
+
+/* ---- Top: title block ---- */
+.nft-top {
+  position: absolute; top: var(--nft-safe); left: var(--nft-safe); right: var(--nft-safe);
+  display: flex; align-items: flex-end; gap: 40px;
+}
+/* Reserve the status column even when empty: long titles never jump on handoff. */
+.nft-heading { flex: 1 1 auto; min-width: 0; }
+.nft-source {
+  flex: 0 0 590px; height: 54px; margin-bottom: 2px; padding: 0 18px;
+  display: flex; align-items: center; gap: 12px; border-radius: 16px;
+  background: rgba(12,12,16,.90); border: 1px solid rgba(255,255,255,.24);
+  font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums;
+  white-space: nowrap; opacity: 0;
+  transition: opacity 160ms var(--nft-snap);
+}
+.nft-source.nft-source-visible { opacity: 1; transition: opacity 240ms var(--nft-ease); }
+.nft-source svg { flex: 0 0 28px; width: 28px; height: 28px; fill: currentColor; }
+/* Status copy is sentence case like the button labels; the title block
+   above sets uppercase, which would turn "MB/s" into "MB/S". */
+.nft-source, .nft-ends { text-transform: none; letter-spacing: 0; }
+.nft-src-ic { display: flex; flex: 0 0 28px; }
+.nft-source .nft-src-cloud,
+.nft-source.nft-source-seedr .nft-src-laptop { display: none; }
+.nft-source.nft-source-seedr .nft-src-cloud { display: flex; }
+.nft-source-text { overflow: hidden; text-overflow: ellipsis; }
+.nft-show { font-size: 22px; letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,.72); font-weight: 600; margin-bottom: 8px; }
+.nft-show:empty { display: none; }
+.nft-title { font-size: 46px; font-weight: 800; letter-spacing: -0.01em; text-shadow: 0 3px 14px rgba(0,0,0,.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- Center: play/pause flash + trick-play badge ---- */
+.nft-center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.nft-flash {
+  width: 132px; height: 132px; border-radius: 50%;
+  background: rgba(12,12,16,.55);
+  box-shadow: 0 0 0 2px rgba(255,255,255,.14), 0 18px 60px rgba(0,0,0,.5);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transform: scale(.6);
+}
+.nft-flash.nft-go { animation: nft-flash 560ms var(--nft-ease); }
+.nft-flash svg { width: 60px; height: 60px; fill: #fff; }
+@keyframes nft-flash {
+  0%   { opacity: 0; transform: scale(.6); }
+  28%  { opacity: 1; transform: scale(1); }
+  70%  { opacity: 1; transform: scale(1.04); }
+  100% { opacity: 0; transform: scale(1.14); }
+}
+.nft-trick { position: absolute; top: 46%; left: 50%; transform: translate(-50%,-50%); font-size: 40px; font-weight: 800; letter-spacing: .05em; text-shadow: 0 2px 10px rgba(0,0,0,.8); display: none; }
+.nft-trick.nft-on2 { display: block; }
+
+/* ---- Bottom block ---- */
+.nft-bottom { position: absolute; left: var(--nft-safe); right: var(--nft-safe); bottom: var(--nft-safe); }
+
+/* Scrub bar */
+.nft-scrub { position: relative; height: 32px; display: flex; align-items: center; margin-bottom: 24px; }
+.nft-track {
+  position: relative; width: 100%; height: 8px; border-radius: 4px;
+  background: #343438;
+  transition: transform 180ms var(--nft-ease);
+}
+/* Opaque levels stay distinct over bright video: base < copied < buffer < red. */
+.nft-downloaded { position: absolute; inset: 0; }
+.nft-download-segment {
+  position: absolute; top: 0; bottom: 0; background: #85858f; border-radius: 4px;
+}
+.nft-buf  { position: absolute; top: 0; bottom: 0; left: 0; width: 0; background: #dedee3; border-radius: 4px; }
+.nft-fill {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 100%;
+  background: var(--nft-accent); border-radius: 4px;
+  transform-origin: left; transform: scaleX(0);
+  will-change: transform;
+}
+/* Chapter markers (intro / recap / credits starts) — quiet dots that let the
+   eye pre-read the episode's shape without a legend. */
+.nft-mark {
+  position: absolute; top: 50%; width: 5px; height: 5px; border-radius: 50%;
+  background: rgba(255,255,255,.85); transform: translate(-50%,-50%);
+  box-shadow: 0 0 0 2px rgba(0,0,0,.35);
+}
+.nft-head {
+  position: absolute; top: 50%; left: 0; width: 22px; height: 22px; border-radius: 50%;
+  background: #fff;
+  transform: translate(-50%,-50%) scale(0);
+  transition: transform 160ms var(--nft-ease);
+  box-shadow: 0 0 0 4px rgba(229,9,20,.9), 0 4px 14px rgba(0,0,0,.55);
+}
+/* scrub focused → head pops in + track thickens (scaleY keeps it composited) */
+.nft-scrub.nft-focused .nft-track { transform: scaleY(1.5); }
+.nft-scrub.nft-focused .nft-head { transform: translate(-50%,-50%) scale(1); }
+
+/* Time bubble preview above the scrub head — concentric with its 10px pad */
+.nft-bubble {
+  position: absolute; bottom: 42px; left: 0;
+  transform: translateX(-50%) translateY(6px) scale(.94);
+  transform-origin: bottom center;
+  background: rgba(18,18,22,.96); border-radius: 12px; padding: 10px 18px;
+  font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums;
+  opacity: 0; visibility: hidden;
+  transition: opacity 130ms var(--nft-snap), transform 130ms var(--nft-snap),
+              visibility 0s linear 130ms;
+  box-shadow: 0 1px 0 rgba(255,255,255,.08) inset, 0 12px 34px rgba(0,0,0,.6);
+  white-space: nowrap;
+}
+.nft-bubble.nft-vis {
+  opacity: 1; visibility: visible;
+  transform: translateX(-50%) translateY(0) scale(1);
+  transition: opacity 170ms var(--nft-ease), transform 170ms var(--nft-ease);
+}
+.nft-bubble .nft-delta { color: var(--nft-accent); margin-left: 10px; font-size: 22px; font-weight: 700; }
+.nft-bub-row { text-align: center; }
+
+/* Scrub-preview frame for the PLAIN fallback bubble — used only when no
+   sprite manifest is ready (no cache, or still generating): engine-provided
+   single JPEG, laptop engine only — hosts without thumbnails 404 and the
+   bubble stays text-only. Fixed 16:9 box so the bubble never reflows while
+   a new bucket loads; ok-class flips on real image load, so a broken/
+   missing frame can never paint. */
+.nft-thumb {
+  display: none; width: 300px; height: 168px; object-fit: cover;
+  border-radius: 8px; margin: 0 auto 8px; background: #000;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.1);
+}
+.nft-bubble.nft-thumb-ok .nft-thumb { display: block; }
+
+/* ---- TV-native trick-play FILMSTRIP (cache-backed sources with a ready
+   sprite manifest — see showFilmstrip/assignStripCards in
+   tv-player.js) — replaces the single-card sprite preview. Sits
+   above the scrub track, centered on SCREEN (not over the scrub head,
+   which keeps tracking the target on its own). 7 fixed card slots; the
+   center one is enlarged/bordered — the seek target — with ~3 smaller
+   cards on each side. Only transform/opacity animate (row slide + card
+   scale), per this file's motion rules. */
+.nft-strip {
+  position: absolute; bottom: 50px; left: 50%;
+  transform: translateX(-50%) translateY(6px) scale(.96);
+  pointer-events: none;
+  opacity: 0; visibility: hidden;
+  transition: opacity 130ms var(--nft-snap), transform 130ms var(--nft-snap),
+              visibility 0s linear 130ms;
+}
+.nft-strip.nft-vis {
+  opacity: 1; visibility: visible;
+  transform: translateX(-50%) translateY(0) scale(1);
+  transition: opacity 170ms var(--nft-ease), transform 170ms var(--nft-ease);
+}
+.nft-strip-row {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  transition: transform 150ms var(--nft-ease);
+  will-change: transform;
+}
+.nft-strip-card {
+  position: relative; width: 210px; height: 118px; border-radius: 8px;
+  overflow: hidden; background: #000; flex: 0 0 auto;
+  box-shadow: 0 4px 14px rgba(0,0,0,.4);
+  transform: scale(.84); opacity: .86;
+  transition: transform 150ms var(--nft-ease), opacity 150ms var(--nft-ease);
+}
+.nft-strip-card.nft-strip-empty { opacity: 0; }
+/* Magic-Remote pointer target: re-enable hit-testing on non-empty cards only
+   (the .nft-strip ancestor is pointer-events:none so the gaps between cards,
+   and empty edge-of-movie slots, still pass clicks through to the scrub
+   track underneath). Click is routed to stripCardClickAt() in
+   tv-player.js. The :hover affordance below only touches
+   transform/opacity, per this file's compositing contract. */
+.nft-strip-card:not(.nft-strip-empty) { pointer-events: auto; }
+.nft-strip-card:not(.nft-strip-empty):hover:not(.nft-strip-center) {
+  transform: scale(.90); opacity: 1;
+}
+.nft-strip-img { position: absolute; inset: 0; background-repeat: no-repeat; }
+/* Center card = the seek target: enlarged (~1.3x via transform, so it pops
+   over its neighbors without reflowing the row), white ring instead of a
+   layout-affecting border, its own elevated shadow. Paired with the 10px
+   row gap above, this keeps a slight overlap into its
+   immediate neighbors (~5px) without hiding either neighbor's edge. */
+.nft-strip-center {
+  transform: scale(1.3); opacity: 1; z-index: 2; border-radius: 10px;
+  box-shadow: 0 0 0 3px #fff, 0 16px 40px rgba(0,0,0,.55);
+}
+.nft-strip-center:not(.nft-strip-empty):hover { transform: scale(1.34); }
+.nft-strip-time {
+  margin-top: 16px; text-align: center; font-size: 30px; font-weight: 800;
+  font-variant-numeric: tabular-nums; text-shadow: 0 2px 10px rgba(0,0,0,.75);
+}
+
+/* Time row: fixed numeric slots keep remaining / TV clock steady. */
+.nft-times { display: flex; justify-content: space-between; font-size: 24px; font-variant-numeric: tabular-nums; color: rgba(255,255,255,.88); margin-bottom: 16px; }
+
+.nft-time-end { display: flex; align-items: baseline; gap: 28px; }
+.nft-dur { min-width: 132px; text-align: right; }
+.nft-ends { width: 290px; text-align: right; white-space: nowrap; color: #d0d0d6; }
+
+/* Controls row — left transport cluster, right utility cluster */
+.nft-controls { display: flex; align-items: center; gap: 14px; }
+.nft-controls .nft-gap { flex: 1 1 auto; }
+.nft-btn {
+  flex: 0 0 auto; min-width: 64px; height: 64px; padding: 0 18px; border: 0;
+  border-radius: 16px;
+  background: rgba(255,255,255,.10); color: #fff;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  font-family: inherit; font-size: 22px; font-weight: 600;
+  transition: transform 160ms var(--nft-ease),
+              background-color 160ms var(--nft-snap),
+              color 160ms var(--nft-snap);
+}
+.nft-btn svg { width: 30px; height: 30px; display: block; fill: currentColor; }
+.nft-btn.nft-icon { width: 64px; padding: 0; }
+.nft-btn.nft-play { width: 84px; height: 84px; border-radius: 22px; }
+.nft-btn.nft-play svg { width: 40px; height: 40px; }
+.nft-btn.nft-active { color: var(--nft-accent); }
+.nft-btn .nft-spd-tag { font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* Play/pause icon cross-fade: both glyphs stay in the DOM, the state class
+   swaps them with opacity+scale (interruptible mid-toggle, no innerHTML). */
+.nft-pp { position: relative; }
+.nft-pp .nft-ic {
+  position: absolute; top: 50%; left: 50%; width: 40px; height: 40px;
+  margin: -20px 0 0 -20px;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transform: scale(.25);
+  transition: opacity 180ms var(--nft-ease), transform 180ms var(--nft-ease);
+}
+.nft-pp .nft-ic svg { width: 40px; height: 40px; }
+/* play triangle reads left-heavy — nudge right for optical center */
+.nft-pp .nft-ic-play svg { transform: translateX(2px); }
+.nft-pp.is-paused .nft-ic-play,
+.nft-pp:not(.is-paused) .nft-ic-pause { opacity: 1; transform: scale(1); }
+
+/* ---- Focus (D-pad) — the focused control inverts to white, TV-native
+   style: unmissable at 10 feet without a glow fighting the artwork. ---- */
+.nft-focusable { outline: none; }
+.nft-btn.nft-focused {
+  transform: scale(1.08);
+  background: #fff; color: #101014;
+  box-shadow: 0 6px 26px rgba(0,0,0,.45);
+}
+.nft-btn.nft-play.nft-focused { transform: scale(1.06); }
+.nft-btn.nft-focused.nft-active { color: var(--nft-accent); }
+/* Keep locked controls reachable so the existing seek gate can explain why.
+   A focused lock keeps a clear ring without looking enabled. */
+.nft-rew, .nft-fwd { position: relative; }
+.nft-lock { display: none; position: absolute; right: 3px; bottom: 3px; }
+.nft-btn .nft-lock svg { width: 20px; height: 20px; }
+.nft-btn.nft-locked { background: rgba(12,12,16,.85); color: #a0a0aa; }
+.nft-btn.nft-locked > svg { opacity: .55; }
+.nft-btn.nft-locked .nft-lock { display: block; color: #e2e2e7; }
+.nft-btn.nft-locked.nft-focused {
+  background: #29292f; color: #a0a0aa; outline: 2px solid #fff; box-shadow: none;
+}
+/* OK-press pulse: dips from the focused scale and springs back */
+.nft-btn.nft-press { animation: nft-press 200ms var(--nft-ease); }
+@keyframes nft-press {
+  0%   { transform: scale(1.08); }
+  45%  { transform: scale(0.97); }
+  100% { transform: scale(1.08); }
+}
+
+/* ---- Subtitle layer (10-foot sized) ---- */
+.nft-subs {
+  position: absolute; left: 0; right: 0; bottom: 130px; text-align: center;
+  pointer-events: none; padding: 0 8%;
+  /* transform, not `bottom`: this file's compositing contract (see header)
+     — animating a layout property re-rasterizes the subtitle layer on a
+     panel already short on GPU memory. */
+  transition: transform 200ms var(--nft-ease);
+}
+.player.nft-controls-shown .nft-subs { transform: translateY(-160px); }
+.nft-subs span {
+  display: inline-block; background: rgba(0,0,0,.62); color: #fff;
+  font-size: 38px; font-weight: 600; line-height: 1.4; padding: 6px 20px;
+  border-radius: 10px; white-space: pre-line;
+  /* NO text-shadow, deliberately.
+   *
+   * This renderer runs with --skia-font-cache-limit-mb=1. At dpr 2 these are
+   * 76px device-pixel glyphs, and a blurred shadow forces a SECOND, larger
+   * raster per glyph on top of the glyph itself. One megabyte does not hold
+   * that for long, and when the glyph cache can no longer allocate, text
+   * renders as empty boxes — the reported "subtitles turn into white boxes"
+   * that preceded the crash. Video kept playing through it because decode
+   * lives in uMediaServer, not here; only Chromium's raster path was dying.
+   *
+   * The shadow was redundant anyway: the text sits on its own dark box, so
+   * contrast comes from `background`, which costs one rounded-rect fill for
+   * the whole line instead of a blur per character. Background nudged
+   * .55 -> .62 to recover the sliver of contrast the shadow was providing.
+   *
+   * If subtitles ever need more punch, raise this alpha — do NOT reinstate a
+   * text-shadow or add -webkit-text-stroke; both re-introduce per-glyph
+   * raster cost on a panel that has none to spare. */
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.nft-subs span:empty { display: none; }
+
+/* ---- Buffering spinner — arc with rounded caps; the 150ms appear-delay
+   swallows the sub-frame blips a healthy seek produces. ---- */
+.nft-spin {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+  opacity: 0; visibility: hidden;
+  transition: opacity 160ms var(--nft-snap), visibility 0s linear 160ms;
+}
+.player.nft-buffering .nft-spin {
+  opacity: 1; visibility: visible;
+  transition: opacity 220ms var(--nft-ease) 150ms, visibility 0s linear 150ms;
+}
+.nft-spin svg { width: 84px; height: 84px; animation: nft-spin 900ms linear infinite; }
+.nft-spin circle {
+  fill: none; stroke: var(--nft-accent); stroke-width: 5; stroke-linecap: round;
+  stroke-dasharray: 42 84; opacity: .95;
+}
+.nft-spin .nft-spin-rail { stroke: rgba(255,255,255,.16); stroke-dasharray: none; }
+@keyframes nft-spin { to { transform: rotate(360deg); } }
+
+/* ---- Skip Intro/Recap pill (lower-right, floats on its own) ----
+   Direct child of #player (NOT #nft) so it shows without the control bar.
+   Always in layout; visibility+opacity+transform give a real enter/exit
+   (the old display:none toggle popped with no animation at all). The
+   "Next episode" pill that used to live here was removed — the TV-style
+   up-next card (see #p-upnext / .p-upnext-* in app.css) now owns that job,
+   triggered from the credits mark instead of a raw "last 5%" heuristic. */
+.nft-skip-pill {
+  position: absolute; right: 80px; bottom: 220px; z-index: 7;
+  border-radius: 14px; padding: 16px 26px; font-size: 24px; font-weight: 800;
+  display: inline-flex; align-items: center; gap: 12px; pointer-events: none;
+  font-family: "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  opacity: 0; visibility: hidden; transform: translateY(14px);
+  transition: opacity 150ms var(--nft-snap), transform 150ms var(--nft-snap),
+              visibility 0s linear 150ms;
+  background: rgba(18,18,22,.85); color: #fff;
+  box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.32), 0 10px 30px rgba(0,0,0,.45);
+}
+.nft-skip-pill svg { width: 28px; height: 28px; fill: currentColor; }
+.nft-skip-pill.nft-vis {
+  opacity: 1; visibility: visible; transform: translateY(0); pointer-events: auto;
+  transition: opacity 240ms var(--nft-ease), transform 240ms var(--nft-ease);
+}
+.nft-skip-pill.nft-focused {
+  box-shadow: 0 0 0 3px #fff, 0 12px 34px rgba(0,0,0,.5);
+  transform: translateY(0) scale(1.06);
+}
+.nft-skip-pill.nft-press { animation: nft-pill-press 200ms var(--nft-ease); }
+@keyframes nft-pill-press {
+  0%   { transform: translateY(0) scale(1.06); }
+  45%  { transform: translateY(0) scale(0.97); }
+  100% { transform: translateY(0) scale(1.06); }
+}
+
+/* ---- Toast ---- */
+.nft-toast {
+  position: absolute; left: 50%; bottom: 360px;
+  transform: translateX(-50%) translateY(10px);
+  background: rgba(18,18,22,.94); color: #fff; font-size: 24px; font-weight: 700;
+  padding: 14px 26px; border-radius: 14px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0; visibility: hidden;
+  transition: opacity 160ms var(--nft-snap), transform 160ms var(--nft-snap),
+              visibility 0s linear 160ms;
+  box-shadow: 0 1px 0 rgba(255,255,255,.08) inset, 0 12px 34px rgba(0,0,0,.6);
+}
+.nft-toast.nft-vis {
+  opacity: 1; visibility: visible;
+  transform: translateX(-50%) translateY(0);
+  transition: opacity 220ms var(--nft-ease), transform 220ms var(--nft-ease);
+}
+
+/* ---- Directional seek indicator ----
+   Accumulated skip amount + three marching chevrons on the side you're
+   seeking toward (mirrored for backward), without summoning the full bar. */
+.nft-seek-ind {
+  position: absolute; top: 50%; transform: translateY(-50%) scale(.94);
+  z-index: 7; display: inline-flex; align-items: center; gap: 14px;
+  padding: 18px 30px; border-radius: 999px;
+  background: rgba(18,18,22,.85); color: #fff; pointer-events: none;
+  font-family: "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.14), 0 10px 30px rgba(0,0,0,.45);
+  opacity: 0; visibility: hidden;
+  transition: opacity 110ms var(--nft-snap), transform 110ms var(--nft-snap),
+              visibility 0s linear 110ms;
+}
+.nft-seek-ind.nft-vis {
+  opacity: 1; visibility: visible; transform: translateY(-50%) scale(1);
+  transition: opacity 140ms var(--nft-ease), transform 140ms var(--nft-ease);
+}
+.nft-seek-ind.left  { left: 8%; }
+.nft-seek-ind.right { right: 8%; }
+.nft-seek-ind .nft-si-num { font-size: 34px; font-weight: 800; }
+.nft-si-chevs { display: inline-flex; align-items: center; }
+.nft-seek-ind.left .nft-si-chevs { transform: scaleX(-1); }
+.nft-si-chevs svg { width: 22px; height: 26px; fill: currentColor; margin-left: -8px; }
+.nft-si-chevs svg:nth-child(1) { animation: nft-chev 700ms linear infinite; }
+.nft-si-chevs svg:nth-child(2) { animation: nft-chev 700ms linear infinite 120ms; }
+.nft-si-chevs svg:nth-child(3) { animation: nft-chev 700ms linear infinite 240ms; }
+@keyframes nft-chev {
+  0%, 100% { opacity: .25; }
+  35%      { opacity: 1; }
+}
