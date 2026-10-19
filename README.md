@@ -73,6 +73,12 @@ luna-send -i -f luna://org.webosbrew.hbchannel.service/install '{"ipkUrl":"https
 
 See the webOS Homebrew Project's [installation commands](https://www.webosbrew.org/pages/commands-cheatsheet) for details. Launch DumiFlix from the TV's app list after installation.
 
+## Rooted TVs (optional)
+
+Root is optional for DumiFlix. To root an LG webOS TV, follow the [RootMyTV project](https://github.com/RootMyTV/RootMyTV.github.io). Its original exploit was patched in 2022, so check which method supports your model and firmware at [cani.rootmy.tv](https://cani.rootmy.tv) first. Rooting carries a risk of damaging your TV's software; read the project's warnings before you start.
+
+On a rooted TV, the [debloat guide](docs/DEBLOAT.md) covers settings and optional service suppression using the [rooted-TV tool](tools/webos-debloat/).
+
 ## Configure the app
 
 Open **Settings** on the TV and sign in with your own Seedr account. No personal keys or credentials ship with this repository. Supply your own credentials for the integrations you want to use:
@@ -119,6 +125,12 @@ deno test --allow-read --allow-env tv-app-tests/
 
 ```sh
 for f in tv-service/tests/test_*.py; do python3 "$f" || exit 1; done
+```
+
+The optional debloat tool has offline tests:
+
+```sh
+python3 -m unittest discover -s tools/webos-debloat/tests -v
 ```
 
 ## License and disclaimer

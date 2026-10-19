@@ -1,0 +1,6 @@
+{
+  "name": "org.webosbrew.hbchannel.service",
+  "version": "1.0.0",
+  "private": true,
+  "main": "service.js"
+}

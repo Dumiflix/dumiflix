@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=com.webos.service.secondscreen.gateway;secondscreen.client
+Exec=/bin/false
+Type=dynamic

@@ -1,0 +1,238 @@
+#!/bin/sh
+
+BASE=/var/lib/webosbrew/dumiflix-memory-guard
+PIDFILE=/tmp/dumiflix-memory-guard.pid
+STATUSFILE=/tmp/dumiflix-memory-guard.status.json
+CLOSE_RESULT=/tmp/dumiflix-memory-guard.close.json
+CGROUP_FILE=/tmp/dumiflix-memory-guard.cgroup
+LOGFILE=/var/log/dumiflix-memory-guard.log
+BOOTSTRAP=/usr/palm/services/jsservicelauncher/bootstrap-node.js
+PRELOAD_UNIT=preload-manager.service
+GATEWAY_SERVICE_TARGET=/usr/share/luna-service2/services.d/com.webos.service.secondscreen.gateway.service
+GATEWAY_SERVICE_OVERRIDE=$BASE/disabled-services/com.webos.service.secondscreen.gateway.service
+# UTP also owns HDMI external inputs, display and sound. Never suppress
+# utp.service or its utp-dvb process, even when broadcast features are unused.
+SUPPRESSED_UNITS="
+second-screen-gateway.service
+ssdp-discovery-lgtv.service
+voiceconductor.service
+voiceinput.service
+iepg.service
+broadcast-channel-mixer.service
+broadcast-conf-downloader.service
+broadcast-systemui-manager.service
+db8-epgdb.service
+"
+SUPPRESSED_PROCESSES="
+ss.gateway
+ssdp-discovery-lgtv
+admanager
+nlpmanager
+lg.thinqai.adapter
+broadcast-configd
+broadcast-channel-mixer
+broadcast-conf-downloader
+broadcast-systemui-manager
+voiceconductor
+voiceinput
+voiceinput_hidraw
+voiceinput_network
+iepg
+"
+
+renderer_pids() {
+    app_id=$1
+    found=
+    for renderer_pid in $(pidof WebAppMgr 2>/dev/null); do
+        proc=/proc/$renderer_pid
+        [ "$(readlink "$proc/exe" 2>/dev/null)" = /usr/bin/WebAppMgr ] || continue
+        command_line=$(tr '\0' ' ' <"$proc/cmdline" 2>/dev/null)
+        case "$command_line" in
+            *"--app-id=$app_id"*)
+                found="${found}${found:+ }${proc##*/}"
+                ;;
+        esac
+    done
+    printf '%s' "$found"
+}
+
+apply_gateway_override() {
+    if ! grep -qs " $GATEWAY_SERVICE_TARGET " /proc/mounts; then
+        if mount --bind "$GATEWAY_SERVICE_OVERRIDE" "$GATEWAY_SERVICE_TARGET" >/dev/null 2>&1; then
+            echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') second-screen Luna activation disabled" >>"$LOGFILE"
+        else
+            echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') failed to disable second-screen Luna activation" >>"$LOGFILE"
+            return 1
+        fi
+    fi
+    ls-control scan-services >/dev/null 2>&1 || true
+}
+
+restore_gateway_override() {
+    if grep -qs " $GATEWAY_SERVICE_TARGET " /proc/mounts; then
+        umount "$GATEWAY_SERVICE_TARGET" >/dev/null 2>&1 || true
+        ls-control scan-services >/dev/null 2>&1 || true
+        echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') second-screen Luna activation restored" >>"$LOGFILE"
+    fi
+}
+
+close_lg_channels() {
+    (
+        cd "$BASE" || exit 1
+        : >"$CGROUP_FILE"
+        export NODE_PATH=/usr/palm/frameworks:/usr/lib/nodejs:/usr/lib/node_modules
+        /usr/bin/node --harmony "$BOOTSTRAP" -- \
+            "$CGROUP_FILE" /var/palm/ls2-dev "$BASE"
+    ) >>"$LOGFILE" 2>&1
+}
+
+suppress_optional_units() {
+    for suppress_unit in $SUPPRESSED_UNITS; do
+        if systemctl is-active --quiet "$suppress_unit"; then
+            systemctl --no-block stop "$suppress_unit" >/dev/null 2>&1 || true
+            echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') optional unit stopped: $suppress_unit" >>"$LOGFILE"
+        fi
+    done
+}
+
+suppress_optional_processes() {
+    for suppress_name in $SUPPRESSED_PROCESSES; do
+        for suppress_pid in $(pidof "$suppress_name" 2>/dev/null); do
+            kill "$suppress_pid" >/dev/null 2>&1 || true
+            echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') optional process stopped: name=$suppress_name pid=$suppress_pid" >>"$LOGFILE"
+        done
+    done
+}
+
+restore_optional_units() {
+    for suppress_unit in $SUPPRESSED_UNITS; do
+        systemctl --no-block start "$suppress_unit" >/dev/null 2>&1 || true
+    done
+    echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') optional LG services restored" >>"$LOGFILE"
+}
+
+write_status() {
+    updated_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+    if [ -s "$CLOSE_RESULT" ]; then
+        last_close=$(cat "$CLOSE_RESULT")
+    else
+        last_close=null
+    fi
+    cat >"$STATUSFILE" <<EOF
+{
+  "service": "org.webosbrew.hbchannel.service.dumiflixguard",
+  "updatedAt": "$updated_at",
+  "dumiPids": "$dumi_pids",
+  "lgChannelsPids": "$lg_pids",
+  "preloadStoppedByUs": $preload_stopped,
+  "suppressedGroups": ["second-screen", "ThinQ/voice", "optional broadcast/EPG", "advertising"],
+  "retainedGroups": ["HDMI/UTP", "AirPlay", "UPnP/DLNA", "Chromecast", "screen-saver"],
+  "lastClose": $last_close
+}
+EOF
+}
+
+watch_guard() {
+    preload_stopped=true
+
+    restore_preloading() {
+        systemctl start "$PRELOAD_UNIT" >/dev/null 2>&1 || true
+        preload_stopped=false
+        echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') preload manager restored" >>"$LOGFILE"
+    }
+
+    trap 'restore_preloading; restore_gateway_override; restore_optional_units; rm -f "$STATUSFILE"; exit 0' TERM INT
+
+    systemctl stop "$PRELOAD_UNIT" >/dev/null 2>&1 || true
+    echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') permanent LG Channels suppression active; preload manager stopped" >>"$LOGFILE"
+    apply_gateway_override
+    suppress_optional_units
+    suppress_optional_processes
+
+    while :; do
+        dumi_pids=$(renderer_pids com.dumiflix.tv)
+        lg_pids=$(renderer_pids com.webos.app.lgchannels)
+
+        # The firmware's only reliable LG Channels off-switch is the shared
+        # preload daemon. Keep it stopped even if another unit tries to start
+        # it; YouTube remains launchable on demand through SAM.
+        if systemctl is-active --quiet "$PRELOAD_UNIT"; then
+            systemctl stop "$PRELOAD_UNIT" >/dev/null 2>&1 || true
+            echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') preload manager re-stopped" >>"$LOGFILE"
+        fi
+        preload_stopped=true
+
+        suppress_optional_units
+        suppress_optional_processes
+
+        if [ -n "$lg_pids" ]; then
+            close_lg_channels
+            lg_pids=$(renderer_pids com.webos.app.lgchannels)
+        fi
+
+        write_status
+        sleep 3
+    done
+}
+
+start_guard() {
+    if [ -f "$PIDFILE" ]; then
+        old_pid=$(cat "$PIDFILE" 2>/dev/null)
+        if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
+            return 0
+        fi
+        rm -f "$PIDFILE"
+    fi
+
+    nohup "$0" --daemon </dev/null >>"$LOGFILE" 2>&1 &
+    echo "$!" >"$PIDFILE"
+}
+
+stop_guard() {
+    if [ -f "$PIDFILE" ]; then
+        old_pid=$(cat "$PIDFILE" 2>/dev/null)
+        if [ -n "$old_pid" ]; then
+            kill "$old_pid" 2>/dev/null || true
+            wait_count=0
+            while kill -0 "$old_pid" 2>/dev/null && [ "$wait_count" -lt 20 ]; do
+                sleep 0.1
+                wait_count=$((wait_count + 1))
+            done
+        fi
+        rm -f "$PIDFILE"
+    fi
+    systemctl start "$PRELOAD_UNIT" >/dev/null 2>&1 || true
+    restore_gateway_override
+    restore_optional_units
+}
+
+case "${1:-start}" in
+    --daemon)
+        watch_guard
+        ;;
+    start)
+        start_guard
+        ;;
+    stop)
+        stop_guard
+        ;;
+    restart)
+        stop_guard
+        start_guard
+        ;;
+    status)
+        if [ -f "$PIDFILE" ]; then
+            old_pid=$(cat "$PIDFILE" 2>/dev/null)
+            if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
+                echo "running pid=$old_pid"
+                exit 0
+            fi
+        fi
+        echo "stopped"
+        exit 1
+        ;;
+    *)
+        echo "usage: $0 {start|stop|restart|status}" >&2
+        exit 2
+        ;;
+esac
